@@ -65,7 +65,16 @@ if __name__ == "__main__":
             losses_train.append(np.asarray(loss).mean())
             
             if 't0' in optimizer.param_groups[0]:       # ASGD triggered
+                tmp = {}
+                for prm in model.parameters():
+                    tmp[prm] = prm.data.clone()
+                    prm.data = optimizer.state[prm]['ax'].clone()
+                
                 ppl_dev, loss_dev = eval_loop(dev_loader, criterion_eval, model)        # evaluate the model
+                
+                for prm in model.parameters():
+                    prm.data = tmp[prm].clone()
+                
             else:                                       # ASGD not triggered
                 ppl_dev, loss_dev = eval_loop(dev_loader, criterion_eval, model)        # evaluate the model
                 
