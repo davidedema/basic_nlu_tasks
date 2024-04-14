@@ -7,27 +7,14 @@ class VariationalDropout(nn.Module):
         self.dropout = dropout
     
     def forward(self, x):
-        # during evaluation we do not drop anything
+        
         if not self.training:
             return x
         
-        is_packed = isinstance(x, torch.nn.utils.rnn.PackedSequence)
+        batch_size = x.size(0)
+        mask = torch.bernoulli((1 - self.dropout) * torch.ones(batch_size, x.size(1))).unsqueeze(2).expand_as(x)
         
-        if is_packed:
-            x, batch_sizes = x
-            max_batch_size = int(batch_sizes[0])
-        else:
-            batch_sizes = None
-            max_batch_size = x.size(0)
-            
-        mask = x.new_empty(max_batch_size, 1, x.size(2), requires_grad=False).bernoulli_(1 - self.dropout)
-        
-        x = x.masked_fill(mask == 0, 0) / (1 - self.dropout)
-        
-        if is_packed:
-            return torch.nn.utils.rnn.PackedSequence(x, batch_sizes)
-        else:
-            return x
+        return mask * x / (1 - self.dropout)
         
         
 
