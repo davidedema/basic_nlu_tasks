@@ -11,6 +11,7 @@ import torch.nn as nn
 import torch.optim as optim
 import math
 import numpy as np
+import torch.optim.lr_scheduler as lr_scheduler
 from model import LM_LSTM
 
 NON_MONOTONE_INTERVAL = 5
@@ -28,29 +29,31 @@ if __name__ == "__main__":
     test_dataset = PennTreeBank(test_raw, lang)
     
     # create the loaders
-    train_loader = DataLoader(train_dataset, batch_size=64, collate_fn=partial(collate_fn, pad_token=lang.word2id["<pad>"]),  shuffle=True)
+    train_loader = DataLoader(train_dataset, batch_size=10, collate_fn=partial(collate_fn, pad_token=lang.word2id["<pad>"]),  shuffle=True)
     dev_loader = DataLoader(dev_dataset, batch_size=128, collate_fn=partial(collate_fn, pad_token=lang.word2id["<pad>"]))
     test_loader = DataLoader(test_dataset, batch_size=128, collate_fn=partial(collate_fn, pad_token=lang.word2id["<pad>"]))
 
         
-    hid_size = 350
-    emb_size = 350
+    hid_size = 800
+    emb_size = 800 
 
     # With SGD try with an higher learning rate (> 1 for instance)
-    lr = 1.1 # This is definitely not good for SGD
+    lr = 10 # This is definitely not good for SGD
     clip = 5 # Clip the gradient
 
     model = LM_LSTM(emb_size, hid_size, vocab_len, pad_index=lang.word2id["<pad>"]).to(DEVICE)
     model.apply(init_weights)
 
     optimizer = optim.SGD(model.parameters(), lr=lr)
+    scheduler = lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.75)
     criterion_train = nn.CrossEntropyLoss(ignore_index=lang.word2id["<pad>"])
     criterion_eval = nn.CrossEntropyLoss(ignore_index=lang.word2id["<pad>"], reduction='sum')
     
     n_epochs = 100
-    patience = 3
+    patience = 5
     losses_train = []
     losses_dev = []
+    perplexity_list = []
     sampled_epochs = []
     best_ppl = math.inf
     best_loss = math.inf
@@ -74,6 +77,16 @@ if __name__ == "__main__":
                 
                 for prm in model.parameters():
                     prm.data = tmp[prm].clone()
+                if  ppl_dev < best_ppl: # the lower, the better
+                    best_ppl = ppl_dev
+                    best_model = copy.deepcopy(model).to('cpu')
+                    patience = 3
+                else:
+                    patience -= 1
+                
+                if patience <= 0: # Early stopping with patience
+                
+                    break # Not nice but it keeps the code clean
                 
             else:                                       # ASGD not triggered
                 ppl_dev, loss_dev = eval_loop(dev_loader, criterion_eval, model)        # evaluate the model
@@ -83,21 +96,24 @@ if __name__ == "__main__":
                 
                 if 't0' not in optimizer.param_groups[0] and (len(best_val_loss) > NON_MONOTONE_INTERVAL and loss_dev > min(best_val_loss[:-NON_MONOTONE_INTERVAL])):
                     print("Triggered, switching to ASGD")
-                    optimizer = optim.ASGD(model.parameters(), lr=lr, t0=0)
+                    optimizer = optim.ASGD(model.parameters(), lr=lr, t0=0,  lambd=0.)
             
                 best_val_loss.append(loss_dev)
                 
             losses_dev.append(np.asarray(loss_dev).mean())
+            perplexity_list.append(ppl_dev)
             pbar.set_description("PPL: %f" % ppl_dev)
             if  ppl_dev < best_ppl: # the lower, the better
                 best_ppl = ppl_dev
                 best_model = copy.deepcopy(model).to('cpu')
                 patience = 3
-            else:
-                patience -= 1
+            else: 
+                print("greve")
                 
-            if patience <= 0: # Early stopping with patience
-                break # Not nice but it keeps the code clean
+            if patience <= 0:
+                print("dovresti stoppare")
+            
+        scheduler.step()
 
     best_model.to(DEVICE)
     final_ppl,  _ = eval_loop(test_loader, criterion_eval, best_model)    
@@ -105,7 +121,8 @@ if __name__ == "__main__":
 
     folder_name = create_report_folder()
     
-    generate_plots(sampled_epochs, losses_train, losses_dev, os.path.join(folder_name,"plot.png"))
+    generate_plots(sampled_epochs, losses_train, losses_dev, os.path.join(folder_name,"plot_loss.png"))
+    generate_ppl_plot(sampled_epochs, perplexity_list, os.path.join(folder_name,"plot_ppl.png"))
     torch.save(model.state_dict(), os.path.join(folder_name, "weights.pt"))
     generate_report(sampled_epochs[-1], n_epochs, lr, hid_size, emb_size, str(type(model)), str(type(optimizer)),final_ppl, os.path.join(folder_name,"report.txt"))
 

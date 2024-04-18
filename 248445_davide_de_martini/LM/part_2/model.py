@@ -1,5 +1,4 @@
 import torch.nn as nn
-import torch
 
 class VariationalDropout(nn.Module):
     def __init__(self, dropout=0.5):
@@ -12,15 +11,16 @@ class VariationalDropout(nn.Module):
             return x
         
         batch_size = x.size(0)
-        mask = torch.bernoulli((1 - self.dropout) * torch.ones(batch_size, x.size(1))).unsqueeze(2).expand_as(x)
         
-        return mask * x / (1 - self.dropout)
+        mask = x.data.new(batch_size, 1, x.size(2)).bernoulli_(1 - self.dropout)
+        mask = mask/(1-self.dropout)
+        mask = mask.expand_as(x)
         
-        
+        return x * mask
 
 class LM_LSTM(nn.Module):
-    def __init__(self, emb_size, hidden_size, output_size, pad_index=0, out_dropout=0.1,            # define layers
-                 emb_dropout=0.1, n_layers=1):
+    def __init__(self, emb_size, hidden_size, output_size, pad_index=0, out_dropout=0.5,            # define layers
+                 emb_dropout=0.5, n_layers=1):
         super(LM_LSTM, self).__init__()
         self.embedding = nn.Embedding(output_size, emb_size, padding_idx=pad_index)                 # Embedding layer -> idea is to use as dictionary, rows are the word embeddings
         self.dropout1 = VariationalDropout(dropout=emb_dropout)
