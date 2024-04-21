@@ -88,6 +88,17 @@ def generate_plots(epochs, loss_train, loss_validation, name):
     plt.tight_layout()
     plt.savefig(name)
     
+def generate_ppl_plot(epochs, perplexity_list, name):
+    plt.figure(figsize=(10, 6))
+    plt.plot(epochs, perplexity_list, label='Validation perplexity', marker='o')  
+    plt.title('Training and Validation Loss')  
+    plt.xlabel('Epochs')  
+    plt.ylabel('Perplexity')  
+    plt.legend()  
+    plt.grid(True)  
+    plt.tight_layout()
+    plt.savefig(name)
+    
 def generate_report(epochs, number_epochs, lr, hidden_size, emb_size, model, optimizer, final_ppl, name):
     file = open(name, "w")
     file.write(f'epochs used: {epochs} \n')
@@ -101,7 +112,7 @@ def generate_report(epochs, number_epochs, lr, hidden_size, emb_size, model, opt
     file.close()
 
 def create_report_folder():
-    base_path = "reports/test"
+    base_path = "/home/disi/nlu_exam/248445_davide_de_martini/LM/part_1/reports/test"
     last_index = get_last_index(os.path.dirname(base_path), os.path.basename(base_path))
     foldername = f"{base_path}{last_index + 1:02d}"
     os.mkdir(foldername)

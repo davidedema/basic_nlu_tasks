@@ -1,25 +1,8 @@
 import torch.nn as nn
 
-class LM_RNN(nn.Module):
-    def __init__(self, emb_size, hidden_size, output_size, pad_index=0, out_dropout=0.1,            # define layers
-                 emb_dropout=0.1, n_layers=1):
-        super(LM_RNN, self).__init__()
-        self.embedding = nn.Embedding(output_size, emb_size, padding_idx=pad_index)                 # Embedding layer -> idea is to use as dictionary, rows are the word embeddings
-        self.rnn = nn.RNN(emb_size, hidden_size, n_layers, bidirectional=False, batch_first=True)                     # RNN layer
-        self.pad_token = pad_index
-        self.output = nn.Linear(hidden_size, output_size)
-        
-    def forward(self, input_sequence):                                                              # define how the layers are connected
-        emb = self.embedding(input_sequence)
-        rnn_out, _  = self.rnn(emb)
-        output = self.output(rnn_out).permute(0,2,1)
-        return output 
-    
-# 1.1
-
 class LM_LSTM(nn.Module):
-    def __init__(self, emb_size, hidden_size, output_size, pad_index=0, out_dropout=0.1,            # define layers
-                 emb_dropout=0.1, n_layers=1):
+    def __init__(self, emb_size, hidden_size, output_size, pad_index=0, out_dropout=0.3,            # define layers
+                 emb_dropout=0.3, n_layers=1):
         super(LM_LSTM, self).__init__()
         self.embedding = nn.Embedding(output_size, emb_size, padding_idx=pad_index)                 # Embedding layer -> idea is to use as dictionary, rows are the word embeddings
         self.dropout1 = nn.Dropout(p=emb_dropout)

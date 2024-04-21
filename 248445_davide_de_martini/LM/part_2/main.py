@@ -15,12 +15,14 @@ import torch.optim.lr_scheduler as lr_scheduler
 from model import LM_LSTM
 
 NON_MONOTONE_INTERVAL = 5
+DATASET_PATH = '/home/disi/nlu_exam/248445_davide_de_martini/LM/part_2'
 
 if __name__ == "__main__":
     
-    train_raw = read_file("dataset/PennTreeBank/ptb.train.txt")
-    dev_raw = read_file("dataset/PennTreeBank/ptb.valid.txt")
-    test_raw = read_file("dataset/PennTreeBank/ptb.test.txt")
+    
+    train_raw = read_file(os.path.join(DATASET_PATH, "dataset/PennTreeBank/ptb.train.txt"))
+    dev_raw = read_file(os.path.join(DATASET_PATH, "dataset/PennTreeBank/ptb.valid.txt"))
+    test_raw = read_file(os.path.join(DATASET_PATH, "dataset/PennTreeBank/ptb.test.txt"))
     # divide the datased
     lang = Lang(train_raw, ["<pad>", "<eos>"])
     vocab_len = len(lang.word2id)
