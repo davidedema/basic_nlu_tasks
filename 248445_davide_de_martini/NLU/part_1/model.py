@@ -17,7 +17,7 @@ class ModelIAS(nn.Module):
         
         self.embedding = nn.Embedding(vocab_len, emb_size, padding_idx=pad_index)
         
-        self.utt_encoder = nn.LSTM(emb_size, hid_size, n_layer, bidirectional=False, batch_first=True)    
+        self.utt_encoder = nn.LSTM(emb_size, hid_size, n_layer, bidirectional=True, batch_first=True)    
         self.slot_out = nn.Linear(hid_size, out_slot)
         self.intent_out = nn.Linear(hid_size, out_int)
         # Dropout layer How/Where do we apply it?
@@ -32,15 +32,12 @@ class ModelIAS(nn.Module):
         packed_input = pack_padded_sequence(utt_emb, seq_lengths.cpu().numpy(), batch_first=True)
         # Process the batch
         packed_output, (last_hidden, cell) = self.utt_encoder(packed_input) 
-       
         # Unpack the sequence
         utt_encoded, input_sizes = pad_packed_sequence(packed_output, batch_first=True)
         # Get the last hidden state
         last_hidden = last_hidden[-1,:,:]
-        
         # Is this another possible way to get the last hiddent state? (Why?)
         # utt_encoded.permute(1,0,2)[-1]
-        
         # Compute slot logits
         slots = self.slot_out(utt_encoded)
         # Compute intent logits

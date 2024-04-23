@@ -15,12 +15,14 @@ from collections import Counter
 device = 'cuda:0' # cuda:0 means we are using the GPU with id 0, if you have multiple GPU
 os.environ['CUDA_LAUNCH_BLOCKING'] = "1" # Used to report errors on CUDA side
 PAD_TOKEN = 0
+DATASET_PATH = '/home/disi/nlu_exam/248445_davide_de_martini/NLU/part_1'
+
 
 if __name__ == "__main__":
     
     
-    tmp_train_raw = load_data(os.path.join('dataset','ATIS','train.json'))
-    test_raw = load_data(os.path.join('dataset','ATIS','test.json'))
+    tmp_train_raw = load_data(os.path.join(DATASET_PATH,'dataset','train.json'))
+    test_raw = load_data(os.path.join(DATASET_PATH,'dataset','test.json'))
     
     portion = 0.10
 
