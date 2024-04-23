@@ -32,15 +32,15 @@ if __name__ == "__main__":
     
     # create the loaders
     train_loader = DataLoader(train_dataset, batch_size=10, collate_fn=partial(collate_fn, pad_token=lang.word2id["<pad>"]),  shuffle=True)
-    dev_loader = DataLoader(dev_dataset, batch_size=128, collate_fn=partial(collate_fn, pad_token=lang.word2id["<pad>"]))
-    test_loader = DataLoader(test_dataset, batch_size=128, collate_fn=partial(collate_fn, pad_token=lang.word2id["<pad>"]))
+    dev_loader = DataLoader(dev_dataset, batch_size=32, collate_fn=partial(collate_fn, pad_token=lang.word2id["<pad>"]))
+    test_loader = DataLoader(test_dataset, batch_size=32, collate_fn=partial(collate_fn, pad_token=lang.word2id["<pad>"]))
 
         
     hid_size = 800
     emb_size = 800 
 
     # With SGD try with an higher learning rate (> 1 for instance)
-    lr = 10 # This is definitely not good for SGD
+    lr = 5 # This is definitely not good for SGD
     clip = 5 # Clip the gradient
 
     model = LM_LSTM(emb_size, hid_size, vocab_len, pad_index=lang.word2id["<pad>"]).to(DEVICE)
@@ -52,7 +52,7 @@ if __name__ == "__main__":
     criterion_eval = nn.CrossEntropyLoss(ignore_index=lang.word2id["<pad>"], reduction='sum')
     
     n_epochs = 100
-    patience = 5
+    patience = 3
     losses_train = []
     losses_dev = []
     perplexity_list = []
@@ -63,60 +63,53 @@ if __name__ == "__main__":
     best_model = None
     pbar = tqdm(range(1,n_epochs))
     #If the PPL is too high try to change the learning rate
-    for epoch in pbar:
-        loss = train_loop(train_loader, optimizer, criterion_train, model, clip)    
-        if epoch % 1 == 0:
-            sampled_epochs.append(epoch)
-            losses_train.append(np.asarray(loss).mean())
-            
-            if 't0' in optimizer.param_groups[0]:       # ASGD triggered
-                tmp = {}
-                for prm in model.parameters():
-                    tmp[prm] = prm.data.clone()
-                    prm.data = optimizer.state[prm]['ax'].clone()
+    try:
+        for epoch in pbar:
+            loss = train_loop(train_loader, optimizer, criterion_train, model, clip)    
+            if epoch % 1 == 0:
+                sampled_epochs.append(epoch)
+                losses_train.append(np.asarray(loss).mean())
                 
-                ppl_dev, loss_dev = eval_loop(dev_loader, criterion_eval, model)        # evaluate the model
+                if 't0' in optimizer.param_groups[0]:       # ASGD triggered
+                    tmp = {}
+                    for prm in model.parameters():
+                        tmp[prm] = prm.data.clone()
+                        prm.data = optimizer.state[prm]['ax'].clone()
+                    
+                    ppl_dev, loss_dev = eval_loop(dev_loader, criterion_eval, model)        # evaluate the model
+                    
+                    for prm in model.parameters():
+                        prm.data = tmp[prm].clone()
+                    
+                else:                                       # ASGD not triggered
+                    ppl_dev, loss_dev = eval_loop(dev_loader, criterion_eval, model)        # evaluate the model
+                    
+                    if loss_dev < best_loss:
+                        best_loss = loss_dev
+                    
+                    if 't0' not in optimizer.param_groups[0] and (len(best_val_loss) > NON_MONOTONE_INTERVAL and loss_dev > min(best_val_loss[:-NON_MONOTONE_INTERVAL])):
+                        print("Triggered, switching to ASGD")
+                        optimizer = optim.ASGD(model.parameters(), lr=lr, t0=0,  lambd=0.)
                 
-                for prm in model.parameters():
-                    prm.data = tmp[prm].clone()
+                    best_val_loss.append(loss_dev)
+                    
+                losses_dev.append(np.asarray(loss_dev).mean())
+                perplexity_list.append(ppl_dev)
+                pbar.set_description("PPL: %f" % ppl_dev)
                 if  ppl_dev < best_ppl: # the lower, the better
                     best_ppl = ppl_dev
                     best_model = copy.deepcopy(model).to('cpu')
                     patience = 3
-                else:
+                else: 
                     patience -= 1
+                    
+                if patience <= 0:
+                    break
                 
-                if patience <= 0: # Early stopping with patience
-                
-                    break # Not nice but it keeps the code clean
-                
-            else:                                       # ASGD not triggered
-                ppl_dev, loss_dev = eval_loop(dev_loader, criterion_eval, model)        # evaluate the model
-                
-                if loss_dev < best_loss:
-                    best_loss = loss_dev
-                
-                if 't0' not in optimizer.param_groups[0] and (len(best_val_loss) > NON_MONOTONE_INTERVAL and loss_dev > min(best_val_loss[:-NON_MONOTONE_INTERVAL])):
-                    print("Triggered, switching to ASGD")
-                    optimizer = optim.ASGD(model.parameters(), lr=lr, t0=0,  lambd=0.)
-            
-                best_val_loss.append(loss_dev)
-                
-            losses_dev.append(np.asarray(loss_dev).mean())
-            perplexity_list.append(ppl_dev)
-            pbar.set_description("PPL: %f" % ppl_dev)
-            if  ppl_dev < best_ppl: # the lower, the better
-                best_ppl = ppl_dev
-                best_model = copy.deepcopy(model).to('cpu')
-                patience = 3
-            else: 
-                print("greve")
-                
-            if patience <= 0:
-                print("dovresti stoppare")
-            
-        scheduler.step()
-
+            scheduler.step()
+    except KeyboardInterrupt:
+        pass
+    
     best_model.to(DEVICE)
     final_ppl,  _ = eval_loop(test_loader, criterion_eval, best_model)    
     print('Test ppl: ', final_ppl)
