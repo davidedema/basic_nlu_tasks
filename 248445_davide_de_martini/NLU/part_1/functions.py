@@ -126,7 +126,7 @@ def generate_plots(epochs, loss_train, loss_validation, name):
     plt.tight_layout()
     plt.savefig(name)
     
-def generate_report(epochs, number_epochs, lr, hidden_size, emb_size, model, optimizer, name):
+def generate_report(epochs, number_epochs, lr, hidden_size, emb_size, model, optimizer, slot_f1, intent_acc, name):
     file = open(name, "w")
     file.write(f'epochs used: {epochs} \n')
     file.write(f'number epochs: {number_epochs} \n')
@@ -135,10 +135,12 @@ def generate_report(epochs, number_epochs, lr, hidden_size, emb_size, model, opt
     file.write(f'embedding_size: {emb_size} \n')
     file.write(f'model: {model} \n')
     file.write(f'optimizer: {optimizer} \n')
+    file.write(f'slot_f1: {slot_f1} \n')
+    file.write(f'intent_acc: {intent_acc} \n')
     file.close()
 
 def create_report_folder():
-    base_path = "/home/disi/nlu_exam/248445_davide_de_martini/NLU/part_1/reports/test"
+    base_path = "/home/davide/Desktop/nlu_exam/248445_davide_de_martini/NLU/part_1/reports/test"
     last_index = get_last_index(os.path.dirname(base_path), os.path.basename(base_path))
     foldername = f"{base_path}{last_index + 1:02d}"
     os.mkdir(foldername)

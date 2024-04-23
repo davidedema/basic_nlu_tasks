@@ -15,7 +15,7 @@ from collections import Counter
 device = 'cuda:0' # cuda:0 means we are using the GPU with id 0, if you have multiple GPU
 os.environ['CUDA_LAUNCH_BLOCKING'] = "1" # Used to report errors on CUDA side
 PAD_TOKEN = 0
-DATASET_PATH = '/home/disi/nlu_exam/248445_davide_de_martini/NLU/part_1'
+DATASET_PATH = '/home/davide/Desktop/nlu_exam/248445_davide_de_martini/NLU/part_1'
 
 
 if __name__ == "__main__":
@@ -126,7 +126,7 @@ if __name__ == "__main__":
     #                  "intent2id": intent2id}
     # torch.save(saving_object, PATH)
     torch.save(model.state_dict(), os.path.join(folder_name, "weights.pt"))
-    generate_report(sampled_epochs[-1], n_epochs, lr, hid_size, emb_size, str(type(model)), str(type(optimizer)), os.path.join(folder_name,"report.txt"))
+    generate_report(sampled_epochs[-1], n_epochs, lr, hid_size, emb_size, str(type(model)), str(type(optimizer)), results_test['total']['f'], intent_test['accuracy'], os.path.join(folder_name,"report.txt"))
     
     
     
