@@ -126,8 +126,9 @@ def generate_plots(epochs, loss_train, loss_validation, name):
     plt.tight_layout()
     plt.savefig(name)
     
-def generate_report(epochs, number_epochs, lr, hidden_size, emb_size, model, optimizer, slot_f1, intent_acc, name):
+def generate_report(runs, epochs, number_epochs, lr, hidden_size, emb_size, model, optimizer, slot_f1, intent_acc, slot_f1_std, intent_acc_std, name):
     file = open(name, "w")
+    file.write(f'runs: {runs} \n')
     file.write(f'epochs used: {epochs} \n')
     file.write(f'number epochs: {number_epochs} \n')
     file.write(f'lr: {lr} \n')
@@ -135,8 +136,8 @@ def generate_report(epochs, number_epochs, lr, hidden_size, emb_size, model, opt
     file.write(f'embedding_size: {emb_size} \n')
     file.write(f'model: {model} \n')
     file.write(f'optimizer: {optimizer} \n')
-    file.write(f'slot_f1: {slot_f1} \n')
-    file.write(f'intent_acc: {intent_acc} \n')
+    file.write(f'mean slot_f1: {slot_f1} variance {slot_f1_std}\n')
+    file.write(f'mean intent_acc: {intent_acc} variance {intent_acc_std} \n')
     file.close()
 
 def create_report_folder():
