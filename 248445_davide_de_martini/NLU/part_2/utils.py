@@ -5,7 +5,7 @@ from collections import Counter
 import os
 import json
 from transformers import BertTokenizer
-
+from pprint import pprint
 
 device = 'cuda:0'
 
@@ -40,7 +40,9 @@ class Lang():
         for elem in elements:
                 vocab[elem] = len(vocab)
         return vocab
-    
+
+# put all the things for BERT
+
 def collate_fn(data):
     def merge(sequences):
         '''
@@ -63,9 +65,13 @@ def collate_fn(data):
     new_item = {}
     for key in data[0].keys():
         new_item[key] = [d[key] for d in data]
-        
     # We just need one length for packed pad seq, since len(utt) == len(slots)
     src_utt, _ = merge(new_item['utterance'])
+    # Build attention mask
+    attention_mask = torch.zeros(src_utt.size(0), src_utt.size(1))
+    attention_mask = attention_mask.masked_fill(src_utt != PAD_TOKEN, 1)
+    # Build token type ids
+    token_type_ids = torch.zeros(src_utt.size(0), src_utt.size(1))
     y_slots, y_lengths = merge(new_item["slots"])
     intent = torch.LongTensor(new_item["intent"])
     
@@ -75,6 +81,8 @@ def collate_fn(data):
     y_lengths = torch.LongTensor(y_lengths).to(device)
     
     new_item["utterances"] = src_utt
+    new_item["attention_mask"] = attention_mask
+    new_item["token_type_ids"] = token_type_ids
     new_item["intents"] = intent
     new_item["y_slots"] = y_slots
     new_item["slots_len"] = y_lengths
@@ -94,9 +102,7 @@ class IntentsAndSlots (data.Dataset):
             self.utterances.append(x['utterance'])
             self.slots.append(x['slots'])
             self.intents.append(x['intent'])
-
-        # self.utt_ids = self.mapping_seq(self.utterances, lang.word2id)
-        # self.slot_ids = self.mapping_seq(self.slots, lang.slot2id)
+            
         self.utt_ids, self.slot_ids = self.mapping_seq(self.utterances, self.slots, lang.slot2id)
         self.intent_ids = self.mapping_lab(self.intents, lang.intent2id)
 
@@ -115,18 +121,6 @@ class IntentsAndSlots (data.Dataset):
     def mapping_lab(self, data, mapper):
         return [mapper[x] if x in mapper else mapper[self.unk] for x in data]
     
-    def mapping_seq(self, data, mapper): # Map sequences to number
-        res = []
-        for seq in data:
-            tmp_seq = []
-            for x in seq.split():
-                if x in mapper:
-                    tmp_seq.append(mapper[x])
-                else:
-                    tmp_seq.append(mapper[self.unk])
-            res.append(tmp_seq)
-        return res
-    
     def mapping_seq(self, data, slots, mapper):
         res = []
         res_slots = []
@@ -142,13 +136,12 @@ class IntentsAndSlots (data.Dataset):
                 tmp_slot_string.extend([slot] + [slot]*(len(word_tokens['input_ids'])-1))
                 tmp_slot.extend([mapper[slot]] + [mapper[slot]]*(len(word_tokens['input_ids'])-1))
             
+            # add CLS and SEP tokens
+            tmp_seq = [101] + tmp_seq + [102]
             res.append(tmp_seq)
             res_slots.append(tmp_slot)
             
         return res, res_slots
-            
-                
-                
 
 def load_data(path):
     '''
