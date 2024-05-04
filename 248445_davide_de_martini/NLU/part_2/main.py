@@ -10,6 +10,7 @@ import numpy as np
 import torch.optim as optim
 from sklearn.model_selection import train_test_split
 from collections import Counter
+from transformers import BertConfig
 
 device = 'cuda:0' # cuda:0 means we are using the GPU with id 0, if you have multiple GPU
 os.environ['CUDA_LAUNCH_BLOCKING'] = "1" # Used to report errors on CUDA side
@@ -65,10 +66,10 @@ if __name__ == "__main__":
     train_loader = DataLoader(train_dataset, batch_size=128, collate_fn=collate_fn,  shuffle=True)
     dev_loader = DataLoader(dev_dataset, batch_size=64, collate_fn=collate_fn)
     test_loader = DataLoader(test_dataset, batch_size=64, collate_fn=collate_fn)
-    
-    hid_size = 200
-    emb_size = 300
 
+    conf = BertConfig.from_pretrained('bert-base-uncased')
+    
+    
     lr = 0.0001 # learning rate
     clip = 5 # Clip the gradient
 
@@ -81,10 +82,12 @@ if __name__ == "__main__":
     runs = 5
     slot_f1s, intent_acc = [], []
     sampled_runs = []
+    ignore_list = []
+    ignore_list.append(102) # SEP token
     
     for x in tqdm(range(1, runs)):
         sampled_runs.append(x)
-        model = ModelBert(hid_size, out_slot, out_int, emb_size, vocab_len, pad_index=PAD_TOKEN, hasDropout=True).to(device)
+        model = ModelBert(conf, out_slot, out_int, ignore_list, pad_index=PAD_TOKEN).to(device)
         model.apply(init_weights)
         
         optimizer = optim.Adam(model.parameters(), lr=lr)

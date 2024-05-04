@@ -10,19 +10,19 @@ PAD_TOKEN = 0
 
 class ModelBert(nn.Module):
 
-    def __init__(self, hid_size, out_slot, out_int, intent_label_lst, slot_label_lst, ignore_list, n_layer=1, pad_index=0):
+    def __init__(self, config, out_slot, out_int, ignore_list, n_layer=1, pad_index=0):
         super(ModelBert, self).__init__()
         # hid_size = Hidden size
         # out_slot = number of slots (output size for slot filling)
         # out_int = number of intents (output size for intent class)
         
-        self.num_intent = len(intent_label_lst)
-        self.num_slot = len(slot_label_lst)
+        self.num_intents = out_int
+        self.num_slot = out_slot
         self.ignore_list = ignore_list
         
-        self.bert = BertModel.from_pretrained('bert-base-uncased')
-        self.slot_out = nn.Linear(hid_size, out_slot)
-        self.intent_out = nn.Linear(hid_size, out_int)
+        self.bert = BertModel(config)
+        self.slot_out = nn.Linear(config.hidden_size, out_slot)
+        self.intent_out = nn.Linear(config.hidden_size, out_int)
         self.dropout = nn.Dropout(0.5)
         
     def forward(self, attention_mask, input_ids, token_type_ids, intent_labels, slot_labels):
@@ -46,7 +46,7 @@ class ModelBert(nn.Module):
         
         # softmax for intent classification
         if intent_labels is not None:
-            if self.num_intent > 1:
+            if self.num_intents > 1:
                 intent_loss_fct = nn.CrossEntropyLoss()
                 intent_loss = intent_loss_fct(intent_out.view(-1, self.num_intents), intent_labels.view(-1))
             elif self.num_intent == 1: 

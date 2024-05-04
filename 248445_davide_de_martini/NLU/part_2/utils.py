@@ -68,16 +68,17 @@ def collate_fn(data):
     # We just need one length for packed pad seq, since len(utt) == len(slots)
     src_utt, _ = merge(new_item['utterance'])
     # Build attention mask
-    attention_mask = torch.zeros(src_utt.size(0), src_utt.size(1))
-    attention_mask = attention_mask.masked_fill(src_utt != PAD_TOKEN, 1)
+    attention_mask = torch.LongTensor([[1 if i != PAD_TOKEN else 0 for i in seq] for seq in src_utt])
     # Build token type ids
-    token_type_ids = torch.zeros(src_utt.size(0), src_utt.size(1))
+    token_type_ids = torch.LongTensor([[0 for i in seq] for seq in src_utt])
     y_slots, y_lengths = merge(new_item["slots"])
     intent = torch.LongTensor(new_item["intent"])
     
     src_utt = src_utt.to(device) # We load the Tensor on our selected device
     y_slots = y_slots.to(device)
     intent = intent.to(device)
+    attention_mask = attention_mask.to(device)
+    token_type_ids = token_type_ids.to(device)
     y_lengths = torch.LongTensor(y_lengths).to(device)
     
     new_item["utterances"] = src_utt
@@ -139,6 +140,8 @@ class IntentsAndSlots (data.Dataset):
             # add CLS and SEP tokens
             tmp_seq = [101] + tmp_seq + [102]
             res.append(tmp_seq)
+            # add 0 and 0 to the slot
+            tmp_slot = [mapper['pad']] + tmp_slot + [mapper['pad']]
             res_slots.append(tmp_slot)
             
         return res, res_slots
