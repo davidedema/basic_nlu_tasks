@@ -5,10 +5,12 @@ from conll import evaluate
 from sklearn.metrics import classification_report
 import os
 import matplotlib.pyplot as plt
+from transformers import BertTokenizer
 
 device = 'cuda:0' # cuda:0 means we are using the GPU with id 0, if you have multiple GPU
 os.environ['CUDA_LAUNCH_BLOCKING'] = "1" # Used to report errors on CUDA side
 PAD_TOKEN = 0
+tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
 
 def init_weights(mat):
     for m in mat.modules():
@@ -36,12 +38,13 @@ def train_loop(data, optimizer, criterion_slots, criterion_intents, model, clip=
     for sample in data:
         optimizer.zero_grad() # Zeroing the gradient
         outputs = model(sample['attention_mask'], sample['utterances'], sample['token_type_ids'], sample['intents'], sample['y_slots'])
-        print(outputs)
-        loss_intent = criterion_intents(intent, sample['intents'])
-        loss_slot = criterion_slots(slots, sample['y_slots'])
-        loss = loss_intent + loss_slot # In joint training we sum the losses. 
-                                       # Is there another way to do that?
-        loss_array.append(loss.item())
+        loss = outputs[0]
+        # print(outputs)
+        # loss_intent = criterion_intents(intent, sample['intents'])
+        # loss_slot = criterion_slots(slots, sample['y_slots'])
+        # loss = loss_intent + loss_slot # In joint training we sum the losses. 
+        #                                # Is there another way to do that?
+        # loss_array.append(loss.item())
         loss.backward() # Compute the gradient, deleting the computational graph
         # clip the gradient to avoid exploding gradients
         torch.nn.utils.clip_grad_norm_(model.parameters(), clip)  
@@ -60,10 +63,9 @@ def eval_loop(data, criterion_slots, criterion_intents, model, lang):
     #softmax = nn.Softmax(dim=1) # Use Softmax if you need the actual probability
     with torch.no_grad(): # It used to avoid the creation of computational graph
         for sample in data:
-            slots, intents = model(sample['utterances'], sample['slots_len'])
-            loss_intent = criterion_intents(intents, sample['intents'])
-            loss_slot = criterion_slots(slots, sample['y_slots'])
-            loss = loss_intent + loss_slot 
+            # slots, intents = model(sample['utterances'], 
+            outputs = model(sample['attention_mask'], sample['utterances'], sample['token_type_ids'], sample['intents'], sample['y_slots'])
+            loss, (intents, slots) = outputs[:2]
             loss_array.append(loss.item())
             # Intent inference
             # Get the highest probable class
@@ -78,9 +80,12 @@ def eval_loop(data, criterion_slots, criterion_intents, model, lang):
             for id_seq, seq in enumerate(output_slots):
                 length = sample['slots_len'].tolist()[id_seq]
                 utt_ids = sample['utterance'][id_seq][:length].tolist()
+                utt_ids = [int(elem) for elem in utt_ids]
                 gt_ids = sample['y_slots'][id_seq].tolist()
+                # gt_slots = [tokenizer.convert_ids_to_tokens(elem) for elem in gt_ids[:length]]
+                utterance = [tokenizer.convert_ids_to_tokens(elem) for elem in utt_ids]
                 gt_slots = [lang.id2slot[elem] for elem in gt_ids[:length]]
-                utterance = [lang.id2word[elem] for elem in utt_ids]
+                # utterance = [lang.id2word[elem] for elem in utt_ids]
                 to_decode = seq[:length].tolist()
                 ref_slots.append([(utterance[id_el], elem) for id_el, elem in enumerate(gt_slots)])
                 tmp_seq = []
@@ -128,14 +133,13 @@ def generate_plots(epochs, loss_train, loss_validation, name):
     plt.tight_layout()
     plt.savefig(name)
     
-def generate_report(runs, epochs, number_epochs, lr, hidden_size, emb_size, model, optimizer, slot_f1, intent_acc, slot_f1_std, intent_acc_std, name):
+def generate_report(runs, epochs, number_epochs, lr, hidden_size, model, optimizer, slot_f1, intent_acc, slot_f1_std, intent_acc_std, name):
     file = open(name, "w")
     file.write(f'runs: {runs} \n')
     file.write(f'epochs used: {epochs} \n')
     file.write(f'number epochs: {number_epochs} \n')
     file.write(f'lr: {lr} \n')
     file.write(f'hidden_size: {hidden_size} \n')
-    file.write(f'embedding_size: {emb_size} \n')
     file.write(f'model: {model} \n')
     file.write(f'optimizer: {optimizer} \n')
     file.write(f'mean slot_f1: {slot_f1} variance {slot_f1_std}\n')

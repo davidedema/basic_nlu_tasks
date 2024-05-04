@@ -68,9 +68,9 @@ class ModelBert(nn.Module):
             
             combined_loss += slot_loss
         
-        outputs = ((intent_out, slot_out),) + outputs[2:]
-        outputs = (combined_loss,) + outputs
+        bert_out = ((intent_out, slot_out),) + bert_out[2:]
+        bert_out = (combined_loss,) + bert_out
     
-        return outputs
+        return bert_out
         
         

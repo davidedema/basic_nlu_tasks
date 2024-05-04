@@ -63,7 +63,7 @@ if __name__ == "__main__":
     dev_dataset = IntentsAndSlots(dev_raw, lang)
     test_dataset = IntentsAndSlots(test_raw, lang)
 
-    train_loader = DataLoader(train_dataset, batch_size=128, collate_fn=collate_fn,  shuffle=True)
+    train_loader = DataLoader(train_dataset, batch_size=32, collate_fn=collate_fn,  shuffle=True)
     dev_loader = DataLoader(dev_dataset, batch_size=64, collate_fn=collate_fn)
     test_loader = DataLoader(test_dataset, batch_size=64, collate_fn=collate_fn)
 
@@ -82,8 +82,7 @@ if __name__ == "__main__":
     runs = 5
     slot_f1s, intent_acc = [], []
     sampled_runs = []
-    ignore_list = []
-    ignore_list.append(102) # SEP token
+    ignore_list = 102
     
     for x in tqdm(range(1, runs)):
         sampled_runs.append(x)
@@ -100,10 +99,10 @@ if __name__ == "__main__":
         sampled_epochs = []
         best_f1 = 0 
         
-        for x in range(1,n_epochs):
+        for x in tqdm(range(1,n_epochs)):
             loss = train_loop(train_loader, optimizer, criterion_slots, 
                             criterion_intents, model, clip=clip)
-            if x % 5 == 0: # We check the performance every 5 epochs
+            if x % 1 == 0: # We check the performance every 5 epochs
                 sampled_epochs.append(x)
                 losses_train.append(np.asarray(loss).mean())
                 results_dev, intent_res, loss_dev = eval_loop(dev_loader, criterion_slots, 
@@ -142,7 +141,7 @@ if __name__ == "__main__":
     #                  "intent2id": intent2id}
     # torch.save(saving_object, PATH)
     torch.save(model.state_dict(), os.path.join(folder_name, "weights.pt"))
-    generate_report(sampled_runs[-1], sampled_epochs[-1], n_epochs, lr, hid_size, emb_size, str(type(model)), str(type(optimizer)), round(slot_f1s.mean(),3), round(intent_acc.mean(), 3), round(slot_f1s.std(),3), round(slot_f1s.std(), 3), os.path.join(folder_name,"report.txt"))
+    generate_report(sampled_runs[-1], sampled_epochs[-1], n_epochs, lr, conf.hidden_size, str(type(model)), str(type(optimizer)), round(slot_f1s.mean(),3), round(intent_acc.mean(), 3), round(slot_f1s.std(),3), round(slot_f1s.std(), 3), os.path.join(folder_name,"report.txt"))
     
     
     
