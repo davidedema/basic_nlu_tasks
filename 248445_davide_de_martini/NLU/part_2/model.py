@@ -37,40 +37,42 @@ class ModelBert(nn.Module):
         slot_out = self.slot_out(drop_slot)
         intent_out = self.intent_out(drop_intent)
         
+        slot_out = slot_out.permute(0,2,1)
+        
         #? return intent_out, slot_out
         
         # TODO: Capire se fare loss dentro il forward o fuori (finire di vedere)
         
         
-        combined_loss = 0
+        # combined_loss = 0
         
-        # softmax for intent classification
-        if intent_labels is not None:
-            if self.num_intents > 1:
-                intent_loss_fct = nn.CrossEntropyLoss()
-                intent_loss = intent_loss_fct(intent_out.view(-1, self.num_intents), intent_labels.view(-1))
-            elif self.num_intent == 1: 
-                intent_loss_fct = nn.MSELoss()
-                intent_loss = intent_loss_fct(intent_out.view(-1), intent_labels.view(-1))
+        # # softmax for intent classification
+        # if intent_labels is not None:
+        #     if self.num_intents > 1:
+        #         intent_loss_fct = nn.CrossEntropyLoss()
+        #         intent_loss = intent_loss_fct(intent_out.view(-1, self.num_intents), intent_labels.view(-1))
+        #     elif self.num_intent == 1: 
+        #         intent_loss_fct = nn.MSELoss()
+        #         intent_loss = intent_loss_fct(intent_out.view(-1), intent_labels.view(-1))
             
-            combined_loss += intent_loss
+        #     combined_loss += intent_loss
         
-        # softmax for slot filling
-        if slot_labels is not None:
-            slot_loss_fct = nn.CrossEntropyLoss(ignore_index=self.ignore_list)
-            if attention_mask is not None:
-                active_loss = attention_mask.view(-1) == 1
-                active_logits = slot_out.view(-1, self.num_slot)[active_loss]
-                active_labels = slot_labels.view(-1)[active_loss]
-                slot_loss = slot_loss_fct(active_logits, active_labels)
-            else:
-                slot_loss = slot_loss_fct(slot_out.view(-1, self.num_slot), slot_labels.view(-1))
+        # # softmax for slot filling
+        # if slot_labels is not None:
+        #     slot_loss_fct = nn.CrossEntropyLoss(ignore_index=self.ignore_list)
+        #     if attention_mask is not None:
+        #         active_loss = attention_mask.view(-1) == 1
+        #         active_logits = slot_out.view(-1, self.num_slot)[active_loss]
+        #         active_labels = slot_labels.view(-1)[active_loss]
+        #         slot_loss = slot_loss_fct(active_logits, active_labels)
+        #     else:
+        #         slot_loss = slot_loss_fct(slot_out.view(-1, self.num_slot), slot_labels.view(-1))
             
-            combined_loss += slot_loss
+        #     combined_loss += slot_loss
         
-        bert_out = ((intent_out, slot_out),) + bert_out[2:]
-        bert_out = (combined_loss,) + bert_out
+        # bert_out = ((intent_out, slot_out),) + bert_out[2:]
+        # bert_out = (combined_loss,) + bert_out
     
-        return bert_out
+        return intent_out, slot_out
         
         

@@ -37,14 +37,12 @@ def train_loop(data, optimizer, criterion_slots, criterion_intents, model, clip=
     loss_array = []
     for sample in data:
         optimizer.zero_grad() # Zeroing the gradient
-        outputs = model(sample['attention_mask'], sample['utterances'], sample['token_type_ids'], sample['intents'], sample['y_slots'])
-        loss = outputs[0]
-        # print(outputs)
-        # loss_intent = criterion_intents(intent, sample['intents'])
-        # loss_slot = criterion_slots(slots, sample['y_slots'])
-        # loss = loss_intent + loss_slot # In joint training we sum the losses. 
-        #                                # Is there another way to do that?
-        # loss_array.append(loss.item())
+        intent, slots = model(sample['attention_mask'], sample['utterances'], sample['token_type_ids'], sample['intents'], sample['y_slots'])
+        loss_intent = criterion_intents(intent, sample['intents'])
+        loss_slot = criterion_slots(slots, sample['y_slots'])
+        loss = loss_intent + loss_slot # In joint training we sum the losses. 
+                                       # Is there another way to do that?
+        loss_array.append(loss.item())
         loss.backward() # Compute the gradient, deleting the computational graph
         # clip the gradient to avoid exploding gradients
         torch.nn.utils.clip_grad_norm_(model.parameters(), clip)  
@@ -64,8 +62,10 @@ def eval_loop(data, criterion_slots, criterion_intents, model, lang):
     with torch.no_grad(): # It used to avoid the creation of computational graph
         for sample in data:
             # slots, intents = model(sample['utterances'], 
-            outputs = model(sample['attention_mask'], sample['utterances'], sample['token_type_ids'], sample['intents'], sample['y_slots'])
-            loss, (intents, slots) = outputs[:2]
+            intents, slots = model(sample['attention_mask'], sample['utterances'], sample['token_type_ids'], sample['intents'], sample['y_slots'])
+            loss_intent = criterion_intents(intents, sample['intents'])
+            loss_slot = criterion_slots(slots, sample['y_slots'])
+            loss = loss_intent + loss_slot 
             loss_array.append(loss.item())
             # Intent inference
             # Get the highest probable class
@@ -87,12 +87,18 @@ def eval_loop(data, criterion_slots, criterion_intents, model, lang):
                 gt_slots = [lang.id2slot[elem] for elem in gt_ids[:length]]
                 # utterance = [lang.id2word[elem] for elem in utt_ids]
                 to_decode = seq[:length].tolist()
-                ref_slots.append([(utterance[id_el], elem) for id_el, elem in enumerate(gt_slots)])
+                ref_slots.append([(utterance[id_el], elem) for id_el, elem in enumerate(gt_slots[1:-1], start=1)])
                 tmp_seq = []
-                for id_el, elem in enumerate(to_decode):
+                for id_el, elem in enumerate(to_decode[1:-1], start=1):
                     tmp_seq.append((utterance[id_el], lang.id2slot[elem]))
                 hyp_slots.append(tmp_seq)
-    try:            
+                # find pad inside ref_slots, remove it and the corresponding element in hyp_slots
+                for id_el, elem in enumerate(ref_slots[-1]):
+                    if elem[1] == 'pad':
+                        ref_slots[-1].pop(id_el)
+                        hyp_slots[-1].pop(id_el)
+                    
+    try:
         results = evaluate(ref_slots, hyp_slots)
     except Exception as ex:
         # Sometimes the model predicts a class that is not in REF
@@ -147,7 +153,7 @@ def generate_report(runs, epochs, number_epochs, lr, hidden_size, model, optimiz
     file.close()
 
 def create_report_folder():
-    base_path = "/home/davide/Desktop/nlu_exam/248445_davide_de_martini/NLU/part_2/reports/test"
+    base_path = "/home/disi/nlu_exam/248445_davide_de_martini/NLU/part_2/reports/test"
     last_index = get_last_index(os.path.dirname(base_path), os.path.basename(base_path))
     foldername = f"{base_path}{last_index + 1:02d}"
     os.mkdir(foldername)
