@@ -58,6 +58,8 @@ def eval_loop(data, criterion_slots, criterion_intents, model, lang):
     
     ref_slots = []
     hyp_slots = []
+    ref_slots_pad = []
+    hyp_slots_pad = []
     #softmax = nn.Softmax(dim=1) # Use Softmax if you need the actual probability
     with torch.no_grad(): # It used to avoid the creation of computational graph
         for sample in data:
@@ -88,18 +90,23 @@ def eval_loop(data, criterion_slots, criterion_intents, model, lang):
                 # utterance = [lang.id2word[elem] for elem in utt_ids]
                 to_decode = seq[:length].tolist()
                 ref_slots.append([(utterance[id_el], elem) for id_el, elem in enumerate(gt_slots[1:-1], start=1)])
+                ref_slots_pad.append([(utterance[id_el], elem) for id_el, elem in enumerate(gt_slots[1:-1], start=1) if elem != 'pad'])
                 tmp_seq = []
                 for id_el, elem in enumerate(to_decode[1:-1], start=1):
                     tmp_seq.append((utterance[id_el], lang.id2slot[elem]))
                 hyp_slots.append(tmp_seq)
-                # find pad inside ref_slots, remove it and the corresponding element in hyp_slots
-                for id_el, elem in enumerate(ref_slots[-1]):
-                    if elem[1] == 'pad':
-                        ref_slots[-1].pop(id_el)
-                        hyp_slots[-1].pop(id_el)
-                    
+    
+    
+    # remove tokens that are not in the reference
+    for id_seq, seq in enumerate(ref_slots):
+        tmp_seq = []
+        for id_el, elem in enumerate(seq):
+            if elem[1] != 'pad':
+                tmp_seq.append(hyp_slots[id_seq][id_el])
+        hyp_slots_pad.append(tmp_seq)
+                              
     try:
-        results = evaluate(ref_slots, hyp_slots)
+        results = evaluate(ref_slots_pad, hyp_slots_pad)
     except Exception as ex:
         # Sometimes the model predicts a class that is not in REF
         print("Warning:", ex)
@@ -153,7 +160,7 @@ def generate_report(runs, epochs, number_epochs, lr, hidden_size, model, optimiz
     file.close()
 
 def create_report_folder():
-    base_path = "/home/disi/nlu_exam/248445_davide_de_martini/NLU/part_2/reports/test"
+    base_path = "/home/davide/Desktop/nlu_exam/248445_davide_de_martini/NLU/part_2/reports/test"
     last_index = get_last_index(os.path.dirname(base_path), os.path.basename(base_path))
     foldername = f"{base_path}{last_index + 1:02d}"
     os.mkdir(foldername)

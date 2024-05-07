@@ -128,15 +128,14 @@ class IntentsAndSlots (data.Dataset):
         for seq, slot in zip(data, slots):
             tmp_seq = []
             tmp_slot = []
-            tmp_slot_string = []
             for word, slot in zip(seq.split(), slot.split(' ')):
                 word_tokens = self.tokenizer(word)
                 # remove CLS and SEP tokens
                 word_tokens['input_ids'] = word_tokens['input_ids'][1:-1]
                 tmp_seq.extend(word_tokens['input_ids'])
-                tmp_slot_string.extend([slot] + [slot]*(len(word_tokens['input_ids'])-1))
                 # tmp_slot.extend([mapper[slot]] + [mapper[slot]]*(len(word_tokens['input_ids'])-1))
                 tmp_slot.extend([mapper[slot]] + [mapper['pad']]*(len(word_tokens['input_ids'])-1))
+                
             
             # add CLS and SEP tokens
             tmp_seq = [101] + tmp_seq + [102]

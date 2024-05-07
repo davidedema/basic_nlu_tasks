@@ -15,7 +15,7 @@ from transformers import BertConfig
 device = 'cuda:0' # cuda:0 means we are using the GPU with id 0, if you have multiple GPU
 os.environ['CUDA_LAUNCH_BLOCKING'] = "1" # Used to report errors on CUDA side
 PAD_TOKEN = 0
-DATASET_PATH = '/home/disi/nlu_exam/248445_davide_de_martini/NLU/part_2'
+DATASET_PATH = '/home/davide/Desktop/nlu_exam/248445_davide_de_martini/NLU/part_2'
 
 # TODO occhio a unire non replicando ma mettendo pad
 
@@ -64,7 +64,7 @@ if __name__ == "__main__":
     dev_dataset = IntentsAndSlots(dev_raw, lang)
     test_dataset = IntentsAndSlots(test_raw, lang)
 
-    train_loader = DataLoader(train_dataset, batch_size=64, collate_fn=collate_fn,  shuffle=True)
+    train_loader = DataLoader(train_dataset, batch_size=32, collate_fn=collate_fn,  shuffle=True)
     dev_loader = DataLoader(dev_dataset, batch_size=64, collate_fn=collate_fn)
     test_loader = DataLoader(test_dataset, batch_size=64, collate_fn=collate_fn)
 
@@ -100,10 +100,10 @@ if __name__ == "__main__":
         sampled_epochs = []
         best_f1 = 0 
         
-        for x in range(1,n_epochs):
+        for x in tqdm(range(1,n_epochs)):
             loss = train_loop(train_loader, optimizer, criterion_slots, 
                             criterion_intents, model, clip=clip)
-            if x % 5 == 0: # We check the performance every 5 epochs
+            if x % 1 == 0: # We check the performance every 5 epochs
                 sampled_epochs.append(x)
                 losses_train.append(np.asarray(loss).mean())
                 results_dev, intent_res, loss_dev = eval_loop(dev_loader, criterion_slots, 
