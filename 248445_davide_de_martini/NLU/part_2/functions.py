@@ -7,12 +7,15 @@ import os
 import matplotlib.pyplot as plt
 from transformers import BertTokenizer
 
-device = 'cuda:0' # cuda:0 means we are using the GPU with id 0, if you have multiple GPU
-os.environ['CUDA_LAUNCH_BLOCKING'] = "1" # Used to report errors on CUDA side
+device = 'cuda:0' 
+os.environ['CUDA_LAUNCH_BLOCKING'] = "1" 
 PAD_TOKEN = 0
 tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
 
 def init_weights(mat):
+    '''
+    Init the weights of the model
+    '''
     for m in mat.modules():
         if type(m) in [nn.GRU, nn.LSTM, nn.RNN]:
             for name, param in m.named_parameters():
@@ -33,11 +36,14 @@ def init_weights(mat):
                     m.bias.data.fill_(0.01)
 
 def train_loop(data, optimizer, criterion_slots, criterion_intents, model, clip=5):
+    '''
+    Train the model on the training set
+    '''
     model.train()
     loss_array = []
     for sample in data:
         optimizer.zero_grad() # Zeroing the gradient
-        intent, slots = model(sample['attention_mask'], sample['utterances'], sample['token_type_ids'], sample['intents'], sample['y_slots'])
+        intent, slots = model(sample['attention_mask'], sample['utterances'], sample['token_type_ids'])
         loss_intent = criterion_intents(intent, sample['intents'])
         loss_slot = criterion_slots(slots, sample['y_slots'])
         loss = loss_intent + loss_slot # In joint training we sum the losses. 
@@ -50,6 +56,9 @@ def train_loop(data, optimizer, criterion_slots, criterion_intents, model, clip=
     return loss_array
 
 def eval_loop(data, criterion_slots, criterion_intents, model, lang):
+    '''
+    Evaluate the performance of the model on the validation set
+    '''
     model.eval()
     loss_array = []
     
@@ -120,6 +129,9 @@ def eval_loop(data, criterion_slots, criterion_intents, model, lang):
     return results, report_intent, loss_array
 
 def get_last_index(directory, base_name):
+    '''
+    Function used to get the last index of the file in the directory (for the report folder)
+    '''
     # Get a list of all files in the directory
     files = os.listdir(directory)
     # Filter out only the files with the specified base name
@@ -135,6 +147,9 @@ def get_last_index(directory, base_name):
     return max(indices) if indices else -1
 
 def generate_plots(epochs, loss_train, loss_validation, name):
+    '''
+    Draw the plot of the loss function
+    '''
     plt.figure(figsize=(10, 6))
     plt.plot(epochs, loss_train, label='Training Loss', marker='o')  
     plt.plot(epochs, loss_validation, label='Validation Loss', marker='s')  
@@ -147,6 +162,9 @@ def generate_plots(epochs, loss_train, loss_validation, name):
     plt.savefig(name)
     
 def generate_report(runs, epochs, number_epochs, lr, hidden_size, model, optimizer, slot_f1, intent_acc, slot_f1_std, intent_acc_std, name):
+    '''
+    Generate a report with the results of the test
+    '''
     file = open(name, "w")
     file.write(f'runs: {runs} \n')
     file.write(f'epochs used: {epochs} \n')
@@ -160,7 +178,10 @@ def generate_report(runs, epochs, number_epochs, lr, hidden_size, model, optimiz
     file.close()
 
 def create_report_folder():
-    base_path = "/home/davide/Desktop/nlu_exam/248445_davide_de_martini/NLU/part_2/reports/test"
+    '''
+    Create folder contating all the info for the test
+    '''
+    base_path = "/home/disi/nlu_exam/248445_davide_de_martini/NLU/part_2/reports/test"
     last_index = get_last_index(os.path.dirname(base_path), os.path.basename(base_path))
     foldername = f"{base_path}{last_index + 1:02d}"
     os.mkdir(foldername)

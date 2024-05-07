@@ -5,7 +5,6 @@ from collections import Counter
 import os
 import json
 from transformers import BertTokenizer
-from pprint import pprint
 
 device = 'cuda:0'
 

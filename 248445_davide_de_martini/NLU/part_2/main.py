@@ -2,22 +2,18 @@
 from functions import *
 from utils import *
 from model import *
-import matplotlib.pyplot as plt
 from tqdm import tqdm
 import os
-import random
 import numpy as np
 import torch.optim as optim
 from sklearn.model_selection import train_test_split
 from collections import Counter
 from transformers import BertConfig
 
-device = 'cuda:0' # cuda:0 means we are using the GPU with id 0, if you have multiple GPU
-os.environ['CUDA_LAUNCH_BLOCKING'] = "1" # Used to report errors on CUDA side
+device = 'cuda:0' 
+os.environ['CUDA_LAUNCH_BLOCKING'] = "1" 
 PAD_TOKEN = 0
-DATASET_PATH = '/home/davide/Desktop/nlu_exam/248445_davide_de_martini/NLU/part_2'
-
-# TODO occhio a unire non replicando ma mettendo pad
+DATASET_PATH = '/home/disi/nlu_exam/248445_davide_de_martini/NLU/part_2'
 
 if __name__ == "__main__":
     
@@ -64,7 +60,7 @@ if __name__ == "__main__":
     dev_dataset = IntentsAndSlots(dev_raw, lang)
     test_dataset = IntentsAndSlots(test_raw, lang)
 
-    train_loader = DataLoader(train_dataset, batch_size=32, collate_fn=collate_fn,  shuffle=True)
+    train_loader = DataLoader(train_dataset, batch_size=128, collate_fn=collate_fn,  shuffle=True)
     dev_loader = DataLoader(dev_dataset, batch_size=64, collate_fn=collate_fn)
     test_loader = DataLoader(test_dataset, batch_size=64, collate_fn=collate_fn)
 
@@ -80,7 +76,7 @@ if __name__ == "__main__":
 
     
     n_epochs = 200
-    runs = 2
+    runs = 5
     slot_f1s, intent_acc = [], []
     sampled_runs = []
     ignore_list = 102
@@ -88,7 +84,7 @@ if __name__ == "__main__":
     for x in tqdm(range(1, runs)):
         sampled_runs.append(x)
         model = ModelBert(conf, out_slot, out_int, ignore_list, pad_index=PAD_TOKEN).to(device)
-        model.apply(init_weights) # TODO init weights
+        model.apply(init_weights) 
         
         optimizer = optim.Adam(model.parameters(), lr=lr)
         criterion_slots = nn.CrossEntropyLoss(ignore_index=PAD_TOKEN)
@@ -100,10 +96,10 @@ if __name__ == "__main__":
         sampled_epochs = []
         best_f1 = 0 
         
-        for x in tqdm(range(1,n_epochs)):
+        for x in range(1,n_epochs):
             loss = train_loop(train_loader, optimizer, criterion_slots, 
                             criterion_intents, model, clip=clip)
-            if x % 1 == 0: # We check the performance every 5 epochs
+            if x % 5 == 0: # We check the performance every 5 epochs
                 sampled_epochs.append(x)
                 losses_train.append(np.asarray(loss).mean())
                 results_dev, intent_res, loss_dev = eval_loop(dev_loader, criterion_slots, 
