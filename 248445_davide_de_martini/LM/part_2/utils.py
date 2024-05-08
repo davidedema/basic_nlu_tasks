@@ -1,11 +1,7 @@
-# Add functions or classes used for data loading and preprocessing
 import torch
 import torch.utils.data as data
 
 DEVICE = 'cuda:0' 
-
-# This class computes and stores our vocab 
-# Word to ids and ids to word# Loading the corpus 
 
 def read_file(path, eos_token="<eos>"):
     output = []
