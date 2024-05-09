@@ -7,11 +7,10 @@ os.environ['CUDA_LAUNCH_BLOCKING'] = "1"
 
 class ModelBert(nn.Module):
 
-    def __init__(self, config, out_aspect, ignore_list, n_layer=1):
+    def __init__(self, config, out_aspect, n_layer=1):
         super(ModelBert, self).__init__()
         
         self.num_slot = out_aspect
-        self.ignore_list = ignore_list
         
         self.bert = BertModel(config)
         self.aspect_out = nn.Linear(config.hidden_size, out_aspect)
@@ -24,7 +23,9 @@ class ModelBert(nn.Module):
         
         drop_aspect = self.dropout(last_hidden_states)
         
-        aspect_out = self.slot_out(drop_aspect)
+        aspect_out = self.aspect_out(drop_aspect) # [batch_size, seq_len, out_aspect]
+        
+        aspect_out = aspect_out.permute(0, 2, 1)  # [batch_size, out_aspect, seq_len]
     
         return aspect_out
         

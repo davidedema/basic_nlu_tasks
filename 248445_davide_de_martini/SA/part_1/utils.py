@@ -82,7 +82,7 @@ def collate_fn(data):
     new_item["attention_mask"] = attention_mask
     new_item["token_type_ids"] = token_type_ids
     new_item["y_aspects"] = y_aspect
-    new_item["slots_len"] = y_lengths
+    new_item["aspect_len"] = y_lengths
     return new_item
 
 class SemEvalLaptop(data.Dataset):
@@ -104,7 +104,7 @@ class SemEvalLaptop(data.Dataset):
     
     def __getitem__(self, idx):
         utt = torch.Tensor(self.utt_ids[idx])
-        aspect = torch.Tensor(self.aspect_ids[idx])
+        aspect = torch.Tensor(self.aspects_ids[idx])
         sample = {'utterance': utt, 'aspect': aspect}
         return sample
     
@@ -114,8 +114,6 @@ class SemEvalLaptop(data.Dataset):
         for utt, aspect in zip(utterances, aspects):
             tmp_seq = []
             tmp_aspect = []
-            print(utt)
-            print(aspect)
             for word, tag in zip(utt.split(), aspect):
                 # handle the case 'word.'
                 if word[-1] == '.':
@@ -162,9 +160,9 @@ def load_data(path):
                     char = char[2:]
                 t = char
                 if t == 'O':
-                    tmp.append(0)
+                    tmp.append(100)
                 else:
-                    tmp.append(1)
+                    tmp.append(200)
             x['aspect'] = tmp
             dataset.append(x)
     return dataset
