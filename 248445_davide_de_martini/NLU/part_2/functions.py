@@ -73,7 +73,7 @@ def eval_loop(data, criterion_slots, criterion_intents, model, lang):
     with torch.no_grad(): # It used to avoid the creation of computational graph
         for sample in data:
             # slots, intents = model(sample['utterances'], 
-            intents, slots = model(sample['attention_mask'], sample['utterances'], sample['token_type_ids'], sample['intents'], sample['y_slots'])
+            intents, slots = model(sample['attention_mask'], sample['utterances'], sample['token_type_ids'])
             loss_intent = criterion_intents(intents, sample['intents'])
             loss_slot = criterion_slots(slots, sample['y_slots'])
             loss = loss_intent + loss_slot 
