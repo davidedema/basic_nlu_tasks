@@ -14,14 +14,19 @@ def evaluate_ote(gold_ot, pred_ot):
     # number of true positive, gold standard, predicted opinion targets
     n_tp_ot, n_gold_ot, n_pred_ot = 0, 0, 0
     for i in range(n_samples):
+        n_hit_ot = 0
         g_ot = gold_ot[i]
         p_ot = pred_ot[i]
-        g_ot_sequence, p_ot_sequence = tag2ot(ote_tag_sequence=g_ot), tag2ot(ote_tag_sequence=p_ot)
         # hit number
-        n_hit_ot = match_ot(gold_ote_sequence=g_ot_sequence, pred_ote_sequence=p_ot_sequence)
+        # n_hit_ot = match_ot(gold_ote_sequence=g_ot_sequence, pred_ote_sequence=p_ot_sequence)
+        # rewrite the match
+        for j, t in enumerate(p_ot):
+            if t == g_ot[j] and t == 2:
+                n_hit_ot += 1
         n_tp_ot += n_hit_ot
-        n_gold_ot += len(g_ot_sequence)
-        n_pred_ot += len(p_ot_sequence)
+        # count the number of 2 in g_ot
+        n_gold_ot += sum([1 for t in g_ot if t == 2])
+        n_pred_ot += sum([1 for t in p_ot if t == 2])
     # add 0.001 for smoothing
     # calculate precision, recall and f1 for ote task
     ot_precision = float(n_tp_ot) / float(n_pred_ot + SMALL_POSITIVE_CONST)

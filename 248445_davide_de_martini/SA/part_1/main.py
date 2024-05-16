@@ -7,7 +7,6 @@ import os
 import numpy as np
 import torch.optim as optim
 from sklearn.model_selection import train_test_split
-from collections import Counter
 from transformers import BertConfig
 
 
@@ -18,9 +17,8 @@ DATASET_PATH = '/home/disi/nlu_exam/248445_davide_de_martini/SA/part_1'
 
 if __name__ == "__main__":
     
-    
-    train_raw = load_data(os.path.join(DATASET_PATH,'dataset','laptop_train.txt'))
-    test_raw = load_data(os.path.join(DATASET_PATH,'dataset','laptop_test.txt'))
+    train_raw = load_data(os.path.join(DATASET_PATH,'dataset','overfit.txt'))
+    test_raw = load_data(os.path.join(DATASET_PATH,'dataset','overfit.txt'))
     
     train_dataset = SemEvalLaptop(train_raw)
     test_dataset = SemEvalLaptop(test_raw)
@@ -30,21 +28,13 @@ if __name__ == "__main__":
 
     conf = BertConfig.from_pretrained('bert-base-uncased')
     
-    
     lr = 0.0001 # learning rate
     clip = 5 # Clip the gradient
     
     out_aspect = 3
-
-    # out_slot = len(lang.slot2id)
-    # out_int = len(lang.intent2id)
-    # vocab_len = len(lang.word2id)
-
     
     n_epochs = 200
-    runs = 5
     aspect_f1s, intent_acc = [], []
-    ignore_list = 102
     
     model = ModelBert(conf, out_aspect).to(device)
     # model.apply(init_weights) 

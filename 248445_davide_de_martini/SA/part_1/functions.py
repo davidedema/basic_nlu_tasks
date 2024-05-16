@@ -1,8 +1,7 @@
 import torch
 from evals import evaluate_ote
 import torch.nn as nn
-from sklearn.metrics import classification_report
-import os
+import os 
 import matplotlib.pyplot as plt
 from transformers import BertTokenizer
 
@@ -78,10 +77,12 @@ def eval_loop(data, criterion_aspect, model):
                 utterance = [tokenizer.convert_ids_to_tokens(elem) for elem in utt_ids]
                 to_decode = seq[:length].tolist()
                 ref_aspect.append([(utterance[id_el], elem) for id_el, elem in enumerate(gt_aspect[1:-1], start=1)])
-                ref_aspect_pad.append([(utterance[id_el], elem) for id_el, elem in enumerate(gt_aspect[1:-1], start=1) if elem != 'pad'])
+                # ref_aspect_pad.append([(utterance[id_el], elem) for id_el, elem in enumerate(gt_aspect[1:-1], start=1) if elem != 'pad'])
+                ref_aspect_pad.append([elem for id_el, elem in enumerate(gt_aspect[1:-1], start=1) if elem != 'pad'])
                 tmp_seq = []
                 for id_el, elem in enumerate(to_decode[1:-1], start=1):
-                    tmp_seq.append((utterance[id_el], elem))
+                    # tmp_seq.append((utterance[id_el], elem))
+                    tmp_seq.append(elem)
                 hyp_aspect.append(tmp_seq)
     
     
