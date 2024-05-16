@@ -160,9 +160,9 @@ def load_data(path):
                     char = char[2:]
                 t = char
                 if t == 'O':
-                    tmp.append(100)
+                    tmp.append(1)
                 else:
-                    tmp.append(200)
+                    tmp.append(2)
             x['aspect'] = tmp
             dataset.append(x)
     return dataset

@@ -49,65 +49,66 @@ def train_loop(data, optimizer, criterion_aspect, model, clip=5):
         # clip the gradient to avoid exploding gradients
         torch.nn.utils.clip_grad_norm_(model.parameters(), clip)  
         optimizer.step() # Update the weights
+    print("sium")
     return loss_array
 
-# def eval_loop(data, criterion_aspect, model):
-#     '''
-#     Evaluate the performance of the model on the validation set
-#     '''
-#     model.eval()
-#     loss_array = []
+def eval_loop(data, criterion_aspect, model):
+    '''
+    Evaluate the performance of the model on the validation set
+    '''
+    model.eval()
+    loss_array = []
     
-#     ref_aspect = []
-#     hyp_aspect = []
-#     ref_aspect_pad = []
-#     hyp_aspect_pad = []
-#     #softmax = nn.Softmax(dim=1) # Use Softmax if you need the actual probability
-#     with torch.no_grad(): # It used to avoid the creation of computational graph
-#         for sample in data:
-#             # slots, intents = model(sample['utterances'], 
-#             aspect = model(sample['attention_mask'], sample['utterances'], sample['token_type_ids'])
-#             loss = criterion_aspect(aspect, sample['y_aspects'])
-#             loss_array.append(loss.item())
+    ref_aspect = []
+    hyp_aspect = []
+    ref_aspect_pad = []
+    hyp_aspect_pad = []
+    #softmax = nn.Softmax(dim=1) # Use Softmax if you need the actual probability
+    with torch.no_grad(): # It used to avoid the creation of computational graph
+        for sample in data:
+            # slots, intents = model(sample['utterances'], 
+            aspect = model(sample['attention_mask'], sample['utterances'], sample['token_type_ids'])
+            loss = criterion_aspect(aspect, sample['y_aspects'])
+            loss_array.append(loss.item())
             
-#             # Slot inference 
-#             output_slots = torch.argmax(aspect, dim=1)
-#             for id_seq, seq in enumerate(output_slots):
-#                 length = sample['aspect_len'].tolist()[id_seq]
-#                 utt_ids = sample['utterance'][id_seq][:length].tolist()
-#                 utt_ids = [int(elem) for elem in utt_ids]
-#                 gt_aspect = sample['y_aspects'][id_seq].tolist()
-#                 utterance = [tokenizer.convert_ids_to_tokens(elem) for elem in utt_ids]
-#                 to_decode = seq[:length].tolist()
-#                 ref_aspect.append([(utterance[id_el], elem) for id_el, elem in enumerate(gt_aspect[1:-1], start=1)])
-#                 ref_aspect_pad.append([(utterance[id_el], elem) for id_el, elem in enumerate(gt_aspect[1:-1], start=1) if elem != 'pad'])
-#                 tmp_seq = []
-#                 for id_el, elem in enumerate(to_decode[1:-1], start=1):
-#                     tmp_seq.append((utterance[id_el], lang.id2slot[elem]))
-#                 hyp_aspect.append(tmp_seq)
+            # Slot inference 
+            output_slots = torch.argmax(aspect, dim=1)
+            for id_seq, seq in enumerate(output_slots):
+                length = sample['aspect_len'].tolist()[id_seq]
+                utt_ids = sample['utterance'][id_seq][:length].tolist()
+                utt_ids = [int(elem) for elem in utt_ids]
+                gt_aspect = sample['y_aspects'][id_seq].tolist()
+                utterance = [tokenizer.convert_ids_to_tokens(elem) for elem in utt_ids]
+                to_decode = seq[:length].tolist()
+                ref_aspect.append([(utterance[id_el], elem) for id_el, elem in enumerate(gt_aspect[1:-1], start=1)])
+                ref_aspect_pad.append([(utterance[id_el], elem) for id_el, elem in enumerate(gt_aspect[1:-1], start=1) if elem != 'pad'])
+                tmp_seq = []
+                for id_el, elem in enumerate(to_decode[1:-1], start=1):
+                    tmp_seq.append((utterance[id_el], elem))
+                hyp_aspect.append(tmp_seq)
     
     
-#     # remove tokens that are not in the reference
-#     for id_seq, seq in enumerate(ref_aspect):
-#         tmp_seq = []
-#         for id_el, elem in enumerate(seq):
-#             if elem[1] != 'pad':
-#                 tmp_seq.append(hyp_aspect[id_seq][id_el])
-#         hyp_aspect_pad.append(tmp_seq)
+    # remove tokens that are not in the reference
+    for id_seq, seq in enumerate(ref_aspect):
+        tmp_seq = []
+        for id_el, elem in enumerate(seq):
+            if elem[1] != 'pad':
+                tmp_seq.append(hyp_aspect[id_seq][id_el])
+        hyp_aspect_pad.append(tmp_seq)
                               
-#     # try:
-#     #     results = evaluate_ote(ref_slots_pad, hyp_slots_pad)
-#     # except Exception as ex:
-#     #     # Sometimes the model predicts a class that is not in REF
-#     #     print("Warning:", ex)
-#     #     ref_s = set([x[1] for x in ref_slots])
-#     #     hyp_s = set([x[1] for x in hyp_slots])
-#     #     print(hyp_s.difference(ref_s))
-#     #     results = {"total":{"f":0}}
+    # try:
+    #     results = evaluate_ote(ref_slots_pad, hyp_slots_pad)
+    # except Exception as ex:
+    #     # Sometimes the model predicts a class that is not in REF
+    #     print("Warning:", ex)
+    #     ref_s = set([x[1] for x in ref_slots])
+    #     hyp_s = set([x[1] for x in hyp_slots])
+    #     print(hyp_s.difference(ref_s))
+    #     results = {"total":{"f":0}}
         
-#     # report_intent = classification_report(ref_intents, hyp_intents, 
-#     #                                       zero_division=False, output_dict=True)
-#     # return results, report_intent, loss_array
+    # report_intent = classification_report(ref_intents, hyp_intents, 
+    #                                       zero_division=False, output_dict=True)
+    # return results, report_intent, loss_array
 
 def get_last_index(directory, base_name):
     '''
