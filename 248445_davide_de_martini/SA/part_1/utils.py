@@ -115,22 +115,10 @@ class SemEvalLaptop(data.Dataset):
             tmp_seq = []
             tmp_aspect = []
             for word, tag in zip(utt.split(), aspect):
-                # handle the case 'word.'
-                if word[-1] == '.':
-                    word = word[:-1]
-                    tokens = self.tokenizer(word)
-                    tokens['input_ids'] = tokens['input_ids'][1:-1]
-                    tmp_seq.extend(tokens['input_ids'])
-                    tmp_aspect.extend([tag]*len(tokens['input_ids']))
-                    dot = self.tokenizer('.')
-                    tmp_seq.extend(dot['input_ids'][1:-1])
-                    tmp_aspect.extend([0]*len(dot['input_ids'][1:-1]))
-                else:
-                    tokens = self.tokenizer(word)
-                    tokens['input_ids'] = tokens['input_ids'][1:-1]
-                    tmp_seq.extend(tokens['input_ids'])
-                    tmp_aspect.extend([tag]*len(tokens['input_ids']))
-            
+                tokens = self.tokenizer(word)
+                tokens['input_ids'] = tokens['input_ids'][1:-1]
+                tmp_seq.extend(tokens['input_ids'])
+                tmp_aspect.extend([tag]*len(tokens['input_ids']))
             # add CLS and SEP tokens
             tmp_seq = [101] + tmp_seq + [102]            
             utt_ids.append(tmp_seq)
@@ -164,5 +152,6 @@ def load_data(path):
                 else:
                     tmp.append(2)
             x['aspect'] = tmp
+            # assert len(x['aspect']) == len(x['utterance']), f"Error in the length of the sequence {len(x['aspect'])} and {len(x['utterance'].split())}"
             dataset.append(x)
     return dataset
