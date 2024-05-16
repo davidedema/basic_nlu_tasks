@@ -32,6 +32,19 @@ def init_weights(mat):
                 torch.nn.init.uniform_(m.weight, -0.01, 0.01)
                 if m.bias != None:
                     m.bias.data.fill_(0.01)
+                    
+def get_weights(dataset):
+    '''
+    Get the weights for the dataset
+    '''
+    count = 0
+    length = 0
+    for sample in dataset:
+        for aspect in sample['aspect']:
+            length += 1
+            if 2 == int(aspect):
+                count += 1
+    return [1, count/length, (length-count)/length]
 
 def train_loop(data, optimizer, criterion_aspect, model, clip=5):
     '''
@@ -77,20 +90,17 @@ def eval_loop(data, criterion_aspect, model):
                 utterance = [tokenizer.convert_ids_to_tokens(elem) for elem in utt_ids]
                 to_decode = seq[:length].tolist()
                 ref_aspect.append([(utterance[id_el], elem) for id_el, elem in enumerate(gt_aspect[1:-1], start=1)])
-                # ref_aspect_pad.append([(utterance[id_el], elem) for id_el, elem in enumerate(gt_aspect[1:-1], start=1) if elem != 'pad'])
-                ref_aspect_pad.append([elem for id_el, elem in enumerate(gt_aspect[1:-1], start=1) if elem != 'pad'])
+                ref_aspect_pad.append([elem for id_el, elem in enumerate(gt_aspect[1:-1], start=1) if elem != 0])
                 tmp_seq = []
                 for id_el, elem in enumerate(to_decode[1:-1], start=1):
-                    # tmp_seq.append((utterance[id_el], elem))
                     tmp_seq.append(elem)
                 hyp_aspect.append(tmp_seq)
-    
     
     # remove tokens that are not in the reference
     for id_seq, seq in enumerate(ref_aspect):
         tmp_seq = []
         for id_el, elem in enumerate(seq):
-            if elem[1] != 'pad':
+            if elem[1] != 0:
                 tmp_seq.append(hyp_aspect[id_seq][id_el])
         hyp_aspect_pad.append(tmp_seq)
     try:
@@ -138,7 +148,7 @@ def generate_plots(epochs, loss_train, loss_validation, name):
     plt.tight_layout()
     plt.savefig(name)
     
-def generate_report(epochs, number_epochs, lr, hidden_size, model, optimizer, slot_f1, intent_acc, slot_f1_std, intent_acc_std, name):
+def generate_report(epochs, number_epochs, lr, hidden_size, model, optimizer, slot_f1, slot_f1_std, name):
     '''
     Generate a report with the results of the test
     '''
@@ -150,7 +160,6 @@ def generate_report(epochs, number_epochs, lr, hidden_size, model, optimizer, sl
     file.write(f'model: {model} \n')
     file.write(f'optimizer: {optimizer} \n')
     file.write(f'mean slot_f1: {slot_f1} variance {slot_f1_std}\n')
-    file.write(f'mean intent_acc: {intent_acc} variance {intent_acc_std} \n')
     file.close()
 
 def create_report_folder():

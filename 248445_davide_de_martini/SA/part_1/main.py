@@ -17,18 +17,25 @@ DATASET_PATH = '/home/disi/nlu_exam/248445_davide_de_martini/SA/part_1'
 
 if __name__ == "__main__":
     
-    train_raw = load_data(os.path.join(DATASET_PATH,'dataset','overfit.txt'))
-    test_raw = load_data(os.path.join(DATASET_PATH,'dataset','overfit.txt'))
+    train_raw = load_data(os.path.join(DATASET_PATH,'dataset','laptop_train.txt'))
+    test_raw = load_data(os.path.join(DATASET_PATH,'dataset','laptop_test.txt'))
     
     train_dataset = SemEvalLaptop(train_raw)
     test_dataset = SemEvalLaptop(test_raw)
     
-    train_loader = DataLoader(train_dataset, batch_size=32, collate_fn=collate_fn,  shuffle=True)
-    test_loader = DataLoader(test_dataset, batch_size=64, collate_fn=collate_fn)
+    # get the weights for the dataset
+    weights = get_weights(train_dataset)
+    # multiply the weights by 3 
+    weights = [x*10 for x in weights]
+    
+    train_loader = DataLoader(train_dataset, batch_size=16, collate_fn=collate_fn,  shuffle=True)
+    test_loader = DataLoader(test_dataset, batch_size=32, collate_fn=collate_fn)
 
     conf = BertConfig.from_pretrained('bert-base-uncased')
     
-    lr = 0.0001 # learning rate
+    lr = 2e-5 # learning rate
+    weight_decay = 0.01
+    # lr = 0.1
     clip = 5 # Clip the gradient
     
     out_aspect = 3
@@ -37,9 +44,11 @@ if __name__ == "__main__":
     aspect_f1s, intent_acc = [], []
     
     model = ModelBert(conf, out_aspect).to(device)
-    # model.apply(init_weights) 
+    model.apply(init_weights)
     
-    optimizer = optim.Adam(model.parameters(), lr=lr)
+    optimizer = optim.AdamW(model.parameters(), lr=lr, weight_decay=weight_decay)
+    # optimizer = optim.SGD(model.parameters(), lr=lr)
+    # criterion_aspect = nn.CrossEntropyLoss(ignore_index=PAD_TOKEN, weight=torch.tensor(weights).to(device))
     criterion_aspect = nn.CrossEntropyLoss(ignore_index=PAD_TOKEN)
     
     patience = 3
@@ -47,10 +56,11 @@ if __name__ == "__main__":
     losses_dev = []
     sampled_epochs = []
     best_f1 = 0 
-    
-    for x in tqdm(range(1,n_epochs)):
+    pbar = tqdm(range(1,n_epochs))
+    for x in pbar:
         loss = train_loop(train_loader, optimizer, criterion_aspect, model, clip=clip)
-        if x % 1 == 0: # We check the performance every 5 epochs
+        pbar.set_description(f'Loss: {np.asarray(loss).mean():.2f}')
+        if x % 5 == 0: # We check the performance every 5 epochs
             sampled_epochs.append(x)
             losses_train.append(np.asarray(loss).mean())
             results_dev, loss_dev = eval_loop(test_loader, criterion_aspect, model)
@@ -65,8 +75,8 @@ if __name__ == "__main__":
                 patience = 3
             else:
                 patience -= 1
-            # if patience <= 0: # Early stopping with patience
-            #     break # Not nice but it keeps the code clean
+            if patience <= 0: # Early stopping with patience
+                break # Not nice but it keeps the code clean
 
     results_test, _ = eval_loop(test_loader, criterion_aspect, model)   
     aspect_f1s.append(results_test[2]) 
@@ -85,7 +95,7 @@ if __name__ == "__main__":
     #                  "intent2id": intent2id}
     # torch.save(saving_object, PATH)
     torch.save(model.state_dict(), os.path.join(folder_name, "weights.pt"))
-    generate_report(sampled_epochs[-1], n_epochs, lr, conf.hidden_size, str(type(model)), str(type(optimizer)), round(aspect_f1s.mean(),3), round(intent_acc.mean(), 3), round(aspect_f1s.std(),3), round(aspect_f1s.std(), 3), os.path.join(folder_name,"report.txt"))
+    generate_report(sampled_epochs[-1], n_epochs, lr, conf.hidden_size, str(type(model)), str(type(optimizer)), round(aspect_f1s.mean(),3), round(aspect_f1s.std(),3), os.path.join(folder_name,"report.txt"))
     
     
     

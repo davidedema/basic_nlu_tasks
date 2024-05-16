@@ -118,13 +118,16 @@ class SemEvalLaptop(data.Dataset):
                 tokens = self.tokenizer(word)
                 tokens['input_ids'] = tokens['input_ids'][1:-1]
                 tmp_seq.extend(tokens['input_ids'])
-                tmp_aspect.extend([tag]*len(tokens['input_ids']))
+                tmp_aspect.extend([tag]+ [0]*(len(tokens['input_ids'])-1))
             # add CLS and SEP tokens
             tmp_seq = [101] + tmp_seq + [102]            
             utt_ids.append(tmp_seq)
             # add 0 and 0 to the aspect for CLS and SEP tokens
             tmp_aspect = [0] + tmp_aspect + [0]
             aspect_ids.append(tmp_aspect)
+            with open('tmp.txt', 'a') as f:
+                f.write(str(tmp_seq) + '\n')
+                f.write(str(tmp_aspect) + '\n')
             
         return utt_ids, aspect_ids
 
