@@ -1,15 +1,9 @@
 import torch.nn as nn
 from transformers import BertModel
-from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
-import os
-
-device = 'cuda:0' 
-os.environ['CUDA_LAUNCH_BLOCKING'] = "1" 
-PAD_TOKEN = 0
 
 class ModelBert(nn.Module):
 
-    def __init__(self, config, out_slot, out_int, ignore_list, n_layer=1, pad_index=0):
+    def __init__(self, config, out_slot, out_int, ignore_list):
         super(ModelBert, self).__init__()
         
         self.num_intents = out_int
@@ -24,6 +18,7 @@ class ModelBert(nn.Module):
     def forward(self, attention_mask, input_ids, token_type_ids):
         
         bert_out = self.bert(attention_mask=attention_mask, input_ids=input_ids, token_type_ids=token_type_ids)
+        # get the last hidden states for slots and the pooled output for intents
         last_hidden_states = bert_out.last_hidden_state
         pooled_output = bert_out.pooler_output
         

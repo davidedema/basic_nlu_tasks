@@ -1,17 +1,13 @@
 import torch
 import torch.utils.data as data
-from torch.utils.data import DataLoader
 from collections import Counter
 import os
 import json
 from transformers import BertTokenizer
 
-device = 'cuda:0'
+DEVICE = 'cuda:0'
 
 PAD_TOKEN = 0
-SEP_TOKEN = 102
-
-os.environ['CUDA_LAUNCH_BLOCKING'] = "1" 
 
 class Lang():
     def __init__(self, words, intents, slots, cutoff=0):
@@ -40,8 +36,6 @@ class Lang():
                 vocab[elem] = len(vocab)
         return vocab
 
-# put all the things for BERT
-
 def collate_fn(data):
     def merge(sequences):
         '''
@@ -49,36 +43,33 @@ def collate_fn(data):
         '''
         lengths = [len(seq) for seq in sequences]
         max_len = 1 if max(lengths)==0 else max(lengths)
-        # Pad token is zero in our case
-        # So we create a matrix full of PAD_TOKEN (i.e. 0) with the shape 
-        # batch_size X maximum length of a sequence
         padded_seqs = torch.LongTensor(len(sequences),max_len).fill_(PAD_TOKEN)
         for i, seq in enumerate(sequences):
             end = lengths[i]
-            padded_seqs[i, :end] = seq # We copy each sequence into the matrix
-        # print(padded_seqs)
-        padded_seqs = padded_seqs.detach()  # We remove these tensors from the computational graph
+            padded_seqs[i, :end] = seq 
+        padded_seqs = padded_seqs.detach()  
         return padded_seqs, lengths
-    # Sort data by seq lengths
+    
     data.sort(key=lambda x: len(x['utterance']), reverse=True) 
     new_item = {}
     for key in data[0].keys():
         new_item[key] = [d[key] for d in data]
-    # We just need one length for packed pad seq, since len(utt) == len(slots)
     src_utt, _ = merge(new_item['utterance'])
+    
     # Build attention mask
     attention_mask = torch.LongTensor([[1 if i != PAD_TOKEN else 0 for i in seq] for seq in src_utt])
     # Build token type ids
     token_type_ids = torch.LongTensor([[0 for i in seq] for seq in src_utt])
+    
     y_slots, y_lengths = merge(new_item["slots"])
     intent = torch.LongTensor(new_item["intent"])
     
-    src_utt = src_utt.to(device) # We load the Tensor on our selected device
-    y_slots = y_slots.to(device)
-    intent = intent.to(device)
-    attention_mask = attention_mask.to(device)
-    token_type_ids = token_type_ids.to(device)
-    y_lengths = torch.LongTensor(y_lengths).to(device)
+    src_utt = src_utt.to(DEVICE) 
+    y_slots = y_slots.to(DEVICE)
+    intent = intent.to(DEVICE)
+    attention_mask = attention_mask.to(DEVICE)
+    token_type_ids = token_type_ids.to(DEVICE)
+    y_lengths = torch.LongTensor(y_lengths).to(DEVICE)
     
     new_item["utterances"] = src_utt
     new_item["attention_mask"] = attention_mask
@@ -89,7 +80,6 @@ def collate_fn(data):
     return new_item
 
 class IntentsAndSlots (data.Dataset):
-    # Mandatory methods are __init__, __len__ and __getitem__
     def __init__(self, dataset, lang, unk='unk'):
         self.utterances = []
         self.intents = []
@@ -116,8 +106,6 @@ class IntentsAndSlots (data.Dataset):
         sample = {'utterance': utt, 'slots': slots, 'intent': intent}
         return sample
     
-    # Auxiliary methods
-    
     def mapping_lab(self, data, mapper):
         return [mapper[x] if x in mapper else mapper[self.unk] for x in data]
     
@@ -132,14 +120,13 @@ class IntentsAndSlots (data.Dataset):
                 # remove CLS and SEP tokens
                 word_tokens['input_ids'] = word_tokens['input_ids'][1:-1]
                 tmp_seq.extend(word_tokens['input_ids'])
-                # tmp_slot.extend([mapper[slot]] + [mapper[slot]]*(len(word_tokens['input_ids'])-1))
+                # extend the slot for the length of the tokenized word with the padding token
                 tmp_slot.extend([mapper[slot]] + [mapper['pad']]*(len(word_tokens['input_ids'])-1))
                 
-            
             # add CLS and SEP tokens
             tmp_seq = [101] + tmp_seq + [102]
             res.append(tmp_seq)
-            # add 0 and 0 to the slot
+            # add 0 and 0 to the slot corresponding to CLS and SEP tokens
             tmp_slot = [mapper['pad']] + tmp_slot + [mapper['pad']]
             res_slots.append(tmp_slot)
             

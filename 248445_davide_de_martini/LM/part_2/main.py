@@ -115,7 +115,7 @@ if __name__ == "__main__":
     folder_name = create_report_folder()
     generate_plots(sampled_epochs, losses_train, losses_dev, os.path.join(folder_name,"plot_loss.png"))
     generate_ppl_plot(sampled_epochs, perplexity_list, os.path.join(folder_name,"plot_ppl.png"))
-    torch.save(model.state_dict(), os.path.join(folder_name, "weights.pt"))
+    torch.save(best_model.state_dict(), os.path.join(folder_name, "weights.pt"))
     generate_report(sampled_epochs[-1], n_epochs, lr, hid_size, emb_size, str(type(model)), str(type(optimizer)),final_ppl, os.path.join(folder_name,"report.txt"))
 
     

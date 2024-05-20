@@ -107,16 +107,15 @@ if __name__ == "__main__":
                 f1 = results_dev['total']['f']
                 if f1 > best_f1:
                     best_f1 = f1
-                    # Here you should save the model
                     best_model = copy.deepcopy(model).to('cpu')
                     patience = 3
                 else:
                     patience -= 1
                 if patience <= 0: # Early stopping
                     break 
-
-        results_test, intent_test, _ = eval_loop(test_loader, criterion_slots, 
-                                            criterion_intents, best_model, lang)   
+          
+        best_model.to(DEVICE)
+        results_test, intent_test, _ = eval_loop(test_loader, criterion_slots, criterion_intents, best_model, lang)   
         intent_acc.append(intent_test['accuracy'])
         slot_f1s.append(results_test['total']['f']) 
         
@@ -130,7 +129,7 @@ if __name__ == "__main__":
     # save the model and create the report
     folder_name = create_report_folder()
     generate_plots(sampled_epochs, losses_train, losses_dev, os.path.join(folder_name,"plot.png"))
-    torch.save(model.state_dict(), os.path.join(folder_name, "weights.pt"))
+    torch.save(best_model.state_dict(), os.path.join(folder_name, "weights.pt"))
     generate_report(sampled_runs[-1], sampled_epochs[-1], n_epochs, lr, hid_size, emb_size, str(type(model)), str(type(optimizer)), round(slot_f1s.mean(),3), round(intent_acc.mean(), 3), round(slot_f1s.std(),3), round(slot_f1s.std(), 3), os.path.join(folder_name,"report.txt"))
     
     
