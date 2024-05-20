@@ -147,7 +147,7 @@ def generate_plots(epochs, loss_train, loss_validation, name):
     plt.tight_layout()
     plt.savefig(name)
     
-def generate_report(epochs, number_epochs, lr, hidden_size, model, optimizer, slot_f1, slot_f1_std, name):
+def generate_report(epochs, number_epochs, lr, hidden_size, model, optimizer, slot_f1, name):
     '''
     Generate a report with the results of the test
     '''
@@ -158,7 +158,7 @@ def generate_report(epochs, number_epochs, lr, hidden_size, model, optimizer, sl
     file.write(f'hidden_size: {hidden_size} \n')
     file.write(f'model: {model} \n')
     file.write(f'optimizer: {optimizer} \n')
-    file.write(f'mean slot_f1: {slot_f1} variance {slot_f1_std}\n')
+    file.write(f'mean slot_f1: {slot_f1} \n')
     file.close()
 
 def create_report_folder():

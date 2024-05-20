@@ -37,7 +37,6 @@ if __name__ == "__main__":
     clip = 5 
     out_aspect = 3
     n_epochs = 200
-    aspect_f1s, intent_acc = [], []
     
     model = ModelBert(conf, out_aspect).to(DEVICE)
     model.apply(init_weights)
@@ -72,19 +71,18 @@ if __name__ == "__main__":
             if patience <= 0: # Early stopping 
                 break 
 
-    results_test, _ = eval_loop(test_loader, criterion_aspect, model)   
-    aspect_f1s.append(results_test[2]) 
-        
-    aspect_f1s = np.asarray(aspect_f1s)
+    results_test, _ = eval_loop(test_loader, criterion_aspect, model)
     
     # print the results
-    print('Aspect F1', round(aspect_f1s.mean(),3), '+-', round(aspect_f1s.std(),3))
+    print('Aspect Precision', results_test[0])
+    print('Aspect Recall', results_test[1])
+    print('Aspect F1', results_test[2])
     
     # save the model and the results
     folder_name = create_report_folder()
     generate_plots(sampled_epochs, losses_train, losses_dev, os.path.join(folder_name,"plot.png"))
     torch.save(best_model.state_dict(), os.path.join(folder_name, "weights.pt"))
-    generate_report(sampled_epochs[-1], n_epochs, lr, conf.hidden_size, str(type(model)), str(type(optimizer)), round(aspect_f1s.mean(),3), round(aspect_f1s.std(),3), os.path.join(folder_name,"report.txt"))
+    generate_report(sampled_epochs[-1], n_epochs, lr, conf.hidden_size, str(type(model)), str(type(optimizer)), results_test[2], os.path.join(folder_name,"report.txt"))
     
     
     
