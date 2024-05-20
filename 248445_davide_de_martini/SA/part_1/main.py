@@ -5,6 +5,7 @@ from model import *
 from tqdm import tqdm
 import os
 import copy
+from sklearn.model_selection import train_test_split
 import numpy as np
 import torch.optim as optim
 from transformers import BertConfig
@@ -15,16 +16,21 @@ DATASET_PATH = '/home/disi/nlu_exam/248445_davide_de_martini/SA/part_1'
 if __name__ == "__main__":
     
     # prepare the datasets
-    train_raw = load_data(os.path.join(DATASET_PATH,'dataset','laptop_train.txt'))
+    tmp_train_raw = load_data(os.path.join(DATASET_PATH,'dataset','laptop_train.txt'))
     test_raw = load_data(os.path.join(DATASET_PATH,'dataset','laptop_test.txt'))
+    
+    # create a validation set
+    train_raw, dev_raw = train_test_split(tmp_train_raw, test_size=0.1, random_state=42, shuffle=True)
     
     # create the datasets
     train_dataset = SemEvalLaptop(train_raw)
     test_dataset = SemEvalLaptop(test_raw)
+    dev_dataset = SemEvalLaptop(dev_raw)
     
     # create the dataloaders
     train_loader = DataLoader(train_dataset, batch_size=16, collate_fn=collate_fn,  shuffle=True)
     test_loader = DataLoader(test_dataset, batch_size=32, collate_fn=collate_fn)
+    dev_loader = DataLoader(dev_dataset, batch_size=32, collate_fn=collate_fn)
     
     # get the weights for the dataset
     weights = get_weights(train_dataset)
@@ -58,7 +64,7 @@ if __name__ == "__main__":
         if x % 5 == 0: 
             sampled_epochs.append(x)
             losses_train.append(np.asarray(loss).mean())
-            results_dev, loss_dev = eval_loop(test_loader, criterion_aspect, model)
+            results_dev, loss_dev = eval_loop(dev_loader, criterion_aspect, model)
             losses_dev.append(np.asarray(loss_dev).mean())
             
             f1 = results_dev[2]
