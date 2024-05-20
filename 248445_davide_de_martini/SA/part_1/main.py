@@ -59,7 +59,8 @@ if __name__ == "__main__":
     
     for x in pbar:
         loss = train_loop(train_loader, optimizer, criterion_aspect, model, clip=clip)
-        pbar.set_description(f'Loss: {np.asarray(loss).mean():.2f}')
+        # pbar.set_description(f'Loss: {np.asarray(loss).mean():.2f}')
+        pbar.set_description(f'F1: {best_f1:.2f}')
         # validate every 5 epochs
         if x % 5 == 0: 
             sampled_epochs.append(x)
@@ -88,7 +89,7 @@ if __name__ == "__main__":
     folder_name = create_report_folder()
     generate_plots(sampled_epochs, losses_train, losses_dev, os.path.join(folder_name,"plot.png"))
     torch.save(best_model.state_dict(), os.path.join(folder_name, "weights.pt"))
-    generate_report(sampled_epochs[-1], n_epochs, lr, conf.hidden_size, str(type(model)), str(type(optimizer)), results_test[2], os.path.join(folder_name,"report.txt"))
+    generate_report(sampled_epochs[-1], n_epochs, lr, conf.hidden_size, str(type(model)), str(type(optimizer)), results_test[0], results_test[1], results_test[2], os.path.join(folder_name,"report.txt"))
     
     
     
