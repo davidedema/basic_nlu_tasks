@@ -1,7 +1,6 @@
 import math
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 import math
 import matplotlib.pyplot as plt
 import os
@@ -12,15 +11,14 @@ def train_loop(data, optimizer, criterion, model, clip=5):
     number_of_tokens = []
     
     for sample in data:
-        optimizer.zero_grad() # Zeroing the gradient
+        optimizer.zero_grad() 
         output = model(sample['source'])
         loss = criterion(output, sample['target'])
         loss_array.append(loss.item() * sample["number_tokens"])
         number_of_tokens.append(sample["number_tokens"])
-        loss.backward() # Compute the gradient, deleting the computational graph
-        # clip the gradient to avoid explosioning gradients
+        loss.backward() 
         torch.nn.utils.clip_grad_norm_(model.parameters(), clip)  
-        optimizer.step() # Update the weights
+        optimizer.step() 
         
     return sum(loss_array)/sum(number_of_tokens)
 
@@ -29,8 +27,7 @@ def eval_loop(data, eval_criterion, model):
     loss_to_return = []
     loss_array = []
     number_of_tokens = []
-    # softmax = nn.Softmax(dim=1) # Use Softmax if you need the actual probability
-    with torch.no_grad(): # It used to avoid the creation of computational graph
+    with torch.no_grad(): 
         for sample in data:
             output = model(sample['source'])
             loss = eval_criterion(output, sample['target'])
@@ -76,6 +73,7 @@ def get_last_index(directory, base_name):
     # Return the maximum index if files exist, otherwise return 0
     return max(indices) if indices else -1
 
+# Plot the training and validation loss
 def generate_plots(epochs, loss_train, loss_validation, name):
     plt.figure(figsize=(10, 6))
     plt.plot(epochs, loss_train, label='Training Loss', marker='o')  
@@ -87,18 +85,20 @@ def generate_plots(epochs, loss_train, loss_validation, name):
     plt.grid(True)  
     plt.tight_layout()
     plt.savefig(name)
-    
+
+# Plot the validation perplexity
 def generate_ppl_plot(epochs, perplexity_list, name):
     plt.figure(figsize=(10, 6))
     plt.plot(epochs, perplexity_list, label='Validation perplexity', marker='o')  
-    plt.title('Training and Validation Loss')  
+    plt.title('Validation Perplexity')  
     plt.xlabel('Epochs')  
     plt.ylabel('Perplexity')  
     plt.legend()  
     plt.grid(True)  
     plt.tight_layout()
     plt.savefig(name)
-    
+
+# Generate the report
 def generate_report(epochs, number_epochs, lr, hidden_size, emb_size, model, optimizer, final_ppl, name):
     file = open(name, "w")
     file.write(f'epochs used: {epochs} \n')
@@ -111,6 +111,7 @@ def generate_report(epochs, number_epochs, lr, hidden_size, emb_size, model, opt
     file.write(f'final_ppl: {final_ppl} \n')
     file.close()
 
+# Create a new report folder with the next index
 def create_report_folder():
     base_path = "/home/disi/nlu_exam/248445_davide_de_martini/LM/part_1/reports/test"
     last_index = get_last_index(os.path.dirname(base_path), os.path.basename(base_path))

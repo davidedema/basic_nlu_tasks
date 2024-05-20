@@ -21,7 +21,7 @@ def evaluate_ote(gold_ot, pred_ot):
         # n_hit_ot = match_ot(gold_ote_sequence=g_ot_sequence, pred_ote_sequence=p_ot_sequence)
         # rewrite the match
         for j, t in enumerate(p_ot):
-            if t == g_ot[j] and t == 2:
+            if t == g_ot[j] and t == 2: 
                 n_hit_ot += 1
         n_tp_ot += n_hit_ot
         # count the number of 2 in g_ot
