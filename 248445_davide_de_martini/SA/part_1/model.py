@@ -1,13 +1,9 @@
 import torch.nn as nn
 from transformers import BertModel
-import os
-
-device = 'cuda:0' 
-os.environ['CUDA_LAUNCH_BLOCKING'] = "1" 
 
 class ModelBert(nn.Module):
 
-    def __init__(self, config, out_aspect, n_layer=1):
+    def __init__(self, config, out_aspect):
         super(ModelBert, self).__init__()
         
         self.bert = BertModel(config)
@@ -24,6 +20,7 @@ class ModelBert(nn.Module):
     
         return aspect_out
 
+# class containing the aspect output layer
 class AspectOut(nn.Module):
     def __init__(self, config, out_aspect, dropout=0.3):
         super(AspectOut, self).__init__()

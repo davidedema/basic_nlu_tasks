@@ -5,9 +5,6 @@ import os
 import matplotlib.pyplot as plt
 from transformers import BertTokenizer
 
-device = 'cuda:0' 
-os.environ['CUDA_LAUNCH_BLOCKING'] = "1" 
-PAD_TOKEN = 0
 tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
 
 def init_weights(mat):
@@ -35,7 +32,7 @@ def init_weights(mat):
                     
 def get_weights(dataset):
     '''
-    Get the weights for the dataset
+    Get the weights for the label in the dataset
     '''
     count = 0
     length = 0
@@ -53,14 +50,13 @@ def train_loop(data, optimizer, criterion_aspect, model, clip=5):
     model.train()
     loss_array = []
     for sample in data:
-        optimizer.zero_grad() # Zeroing the gradient
-        aspect = model(sample['attention_mask'], sample['utterances'], sample['token_type_ids'])
+        optimizer.zero_grad() 
+        aspect = model(sample['attention_mask'], sample['seq'], sample['token_type_ids'])
         loss = criterion_aspect(aspect, sample['y_aspects'])
         loss_array.append(loss.item())
-        loss.backward() # Compute the gradient, deleting the computational graph
-        # clip the gradient to avoid exploding gradients
+        loss.backward() 
         torch.nn.utils.clip_grad_norm_(model.parameters(), clip)  
-        optimizer.step() # Update the weights
+        optimizer.step() 
     return loss_array
 
 def eval_loop(data, criterion_aspect, model):
@@ -74,29 +70,32 @@ def eval_loop(data, criterion_aspect, model):
     hyp_aspect = []
     ref_aspect_pad = []
     hyp_aspect_pad = []
-    #softmax = nn.Softmax(dim=1) # Use Softmax if you need the actual probability
-    with torch.no_grad(): # It used to avoid the creation of computational graph
+    with torch.no_grad(): 
         for sample in data:
-            aspect = model(sample['attention_mask'], sample['utterances'], sample['token_type_ids'])
+            aspect = model(sample['attention_mask'], sample['seq'], sample['token_type_ids'])
             loss = criterion_aspect(aspect, sample['y_aspects'])
             loss_array.append(loss.item())
             
-            output_slots = torch.argmax(aspect, dim=1)
-            for id_seq, seq in enumerate(output_slots):
+            output_aspects = torch.argmax(aspect, dim=1)
+            for id_seq, seq in enumerate(output_aspects):
                 length = sample['aspect_len'].tolist()[id_seq]  
-                utt_ids = sample['utterance'][id_seq][:length].tolist()
-                utt_ids = [int(elem) for elem in utt_ids]
+                seq_ids = sample['seq'][id_seq][:length].tolist()
+                seq_ids = [int(elem) for elem in seq_ids]
                 gt_aspect = sample['y_aspects'][id_seq][:length].tolist()
-                utterance = [tokenizer.convert_ids_to_tokens(elem) for elem in utt_ids]
+                # get the tokens of the sequence by converting the ids
+                sequence = [tokenizer.convert_ids_to_tokens(elem) for elem in seq_ids]
                 to_decode = seq[:length].tolist()
-                ref_aspect.append([(utterance[id_el], elem) for id_el, elem in enumerate(gt_aspect[1:-1], start=1)])
+                # get the aspects from the ground truth ignoring the first and last token (pad for CLS and SEP)
+                ref_aspect.append([(sequence[id_el], elem) for id_el, elem in enumerate(gt_aspect[1:-1], start=1)])
+                # delete internal padding inside the aspects (pad for the words that create subtokens)
                 ref_aspect_pad.append([elem for id_el, elem in enumerate(gt_aspect[1:-1], start=1) if elem != 0])
                 tmp_seq = []
+                # get the aspects from the model ignoring the first and last token (pad for CLS and SEP)
                 for id_el, elem in enumerate(to_decode[1:-1], start=1):
                     tmp_seq.append(elem)
                 hyp_aspect.append(tmp_seq)
     
-    # remove tokens that are not in the reference
+    # remove tokens that are not in the reference (the one had to pad for the subtokens)
     for id_seq, seq in enumerate(ref_aspect):
         tmp_seq = []
         for id_el, elem in enumerate(seq):

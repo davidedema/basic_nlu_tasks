@@ -2,6 +2,7 @@ import numpy as np
 
 SMALL_POSITIVE_CONST = 1e-4
 
+# slightly modified from the original code, for fitting the current codebase
 def evaluate_ote(gold_ot, pred_ot):
     """
     evaluate the model performce for the ote task
@@ -17,15 +18,15 @@ def evaluate_ote(gold_ot, pred_ot):
         n_hit_ot = 0
         g_ot = gold_ot[i]
         p_ot = pred_ot[i]
-        # hit number
-        # n_hit_ot = match_ot(gold_ote_sequence=g_ot_sequence, pred_ote_sequence=p_ot_sequence)
-        # rewrite the match
+        # hit number 
         for j, t in enumerate(p_ot):
+            # count the number of correctly predicted opinion targets
             if t == g_ot[j] and t == 2: 
                 n_hit_ot += 1
         n_tp_ot += n_hit_ot
-        # count the number of 2 in g_ot
+        # count the number of aspects in g_ot
         n_gold_ot += sum([1 for t in g_ot if t == 2])
+        # count the number of aspects in p_ot
         n_pred_ot += sum([1 for t in p_ot if t == 2])
     # add 0.001 for smoothing
     # calculate precision, recall and f1 for ote task
