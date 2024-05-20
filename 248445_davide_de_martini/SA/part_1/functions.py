@@ -165,7 +165,7 @@ def create_report_folder():
     '''
     Create folder contating all the info for the test
     '''
-    base_path = "/home/disi/nlu_exam/248445_davide_de_martini/SA/part_2/reports/test"
+    base_path = "/home/disi/nlu_exam/248445_davide_de_martini/SA/part_1/reports/test"
     last_index = get_last_index(os.path.dirname(base_path), os.path.basename(base_path))
     foldername = f"{base_path}{last_index + 1:02d}"
     os.mkdir(foldername)
