@@ -1,11 +1,6 @@
 import torch.nn as nn
 import torch
 from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
-import os
-
-device = 'cuda:0' # cuda:0 means we are using the GPU with id 0, if you have multiple GPU
-os.environ['CUDA_LAUNCH_BLOCKING'] = "1" # Used to report errors on CUDA side
-PAD_TOKEN = 0
 
 class ModelIAS(nn.Module):
 
@@ -34,7 +29,6 @@ class ModelIAS(nn.Module):
         utt_emb = self.embedding(utterance) # utt_emb.size() = batch_size X seq_len X emb_size
         if (self.hasDropout):
             utt_emb = self.dropout(utt_emb)
-        # pack_padded_sequence avoid computation over pad tokens reducing the computational cost
         
         packed_input = pack_padded_sequence(utt_emb, seq_lengths.cpu().numpy(), batch_first=True)
         # Process the batch
@@ -50,13 +44,11 @@ class ModelIAS(nn.Module):
         if (self.hasDropout):
             utt_encoded = self.dropout(utt_encoded)
             last_hidden = self.dropout(last_hidden)
-        # out_drop = self.dropout(utt_encoded)
         slots = self.slot_out(utt_encoded)
-        # out_drop = self.dropout(last_hidden)
         # Compute intent logits
         intent = self.intent_out(last_hidden)
         
         # Slot size: batch_size, seq_len, classes 
-        slots = slots.permute(0,2,1) # We need this for computing the loss
+        slots = slots.permute(0,2,1)
         # Slot size: batch_size, classes, seq_len
         return slots, intent

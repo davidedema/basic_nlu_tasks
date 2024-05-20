@@ -5,10 +5,6 @@ from sklearn.metrics import classification_report
 import os
 import matplotlib.pyplot as plt
 
-device = 'cuda:0' # cuda:0 means we are using the GPU with id 0, if you have multiple GPU
-os.environ['CUDA_LAUNCH_BLOCKING'] = "1" # Used to report errors on CUDA side
-PAD_TOKEN = 0
-
 def init_weights(mat):
     for m in mat.modules():
         if type(m) in [nn.GRU, nn.LSTM, nn.RNN]:
@@ -33,17 +29,15 @@ def train_loop(data, optimizer, criterion_slots, criterion_intents, model, clip=
     model.train()
     loss_array = []
     for sample in data:
-        optimizer.zero_grad() # Zeroing the gradient
+        optimizer.zero_grad() 
         slots, intent = model(sample['utterances'], sample['slots_len'])
         loss_intent = criterion_intents(intent, sample['intents'])
         loss_slot = criterion_slots(slots, sample['y_slots'])
-        loss = loss_intent + loss_slot # In joint training we sum the losses. 
-                                       # Is there another way to do that?
+        loss = loss_intent + loss_slot 
         loss_array.append(loss.item())
-        loss.backward() # Compute the gradient, deleting the computational graph
-        # clip the gradient to avoid exploding gradients
+        loss.backward() 
         torch.nn.utils.clip_grad_norm_(model.parameters(), clip)  
-        optimizer.step() # Update the weights
+        optimizer.step()
     return loss_array
 
 def eval_loop(data, criterion_slots, criterion_intents, model, lang):
@@ -55,18 +49,16 @@ def eval_loop(data, criterion_slots, criterion_intents, model, lang):
     
     ref_slots = []
     hyp_slots = []
-    #softmax = nn.Softmax(dim=1) # Use Softmax if you need the actual probability
-    with torch.no_grad(): # It used to avoid the creation of computational graph
+    with torch.no_grad(): 
         for sample in data:
             slots, intents = model(sample['utterances'], sample['slots_len'])
             loss_intent = criterion_intents(intents, sample['intents'])
             loss_slot = criterion_slots(slots, sample['y_slots'])
             loss = loss_intent + loss_slot 
             loss_array.append(loss.item())
+            
             # Intent inference
-            # Get the highest probable class
-            out_intents = [lang.id2intent[x] 
-                           for x in torch.argmax(intents, dim=1).tolist()] 
+            out_intents = [lang.id2intent[x] for x in torch.argmax(intents, dim=1).tolist()] 
             gt_intents = [lang.id2intent[x] for x in sample['intents'].tolist()]
             ref_intents.extend(gt_intents)
             hyp_intents.extend(out_intents)
@@ -114,6 +106,7 @@ def get_last_index(directory, base_name):
     # Return the maximum index if files exist, otherwise return 0
     return max(indices) if indices else -1
 
+# Generate plot for the training and validation loss
 def generate_plots(epochs, loss_train, loss_validation, name):
     plt.figure(figsize=(10, 6))
     plt.plot(epochs, loss_train, label='Training Loss', marker='o')  
@@ -125,7 +118,8 @@ def generate_plots(epochs, loss_train, loss_validation, name):
     plt.grid(True)  
     plt.tight_layout()
     plt.savefig(name)
-    
+
+# Generate a report with the results
 def generate_report(runs, epochs, number_epochs, lr, hidden_size, emb_size, model, optimizer, slot_f1, intent_acc, slot_f1_std, intent_acc_std, name):
     file = open(name, "w")
     file.write(f'runs: {runs} \n')
@@ -140,6 +134,7 @@ def generate_report(runs, epochs, number_epochs, lr, hidden_size, emb_size, mode
     file.write(f'mean intent_acc: {intent_acc} variance {intent_acc_std} \n')
     file.close()
 
+# Create a new folder for the report
 def create_report_folder():
     base_path = "/home/davide/Desktop/nlu_exam/248445_davide_de_martini/NLU/part_1/reports/test"
     last_index = get_last_index(os.path.dirname(base_path), os.path.basename(base_path))
