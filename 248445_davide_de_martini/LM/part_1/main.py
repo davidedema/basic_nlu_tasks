@@ -60,7 +60,7 @@ if __name__ == "__main__":
     
     for epoch in pbar:
         loss = train_loop(train_loader, optimizer, criterion_train, model, clip)    
-        if epoch % 1 == 0:
+        if epoch % 1 == 0:  # validate every epoch
             sampled_epochs.append(epoch)
             losses_train.append(np.asarray(loss).mean())
             ppl_dev, loss_dev = eval_loop(dev_loader, criterion_eval, model)
