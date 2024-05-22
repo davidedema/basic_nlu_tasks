@@ -71,62 +71,55 @@ if __name__ == "__main__":
     vocab_len = len(lang.word2id)
 
     n_epochs = 200
-    runs = 5
-    slot_f1s, intent_acc = [], []
-    sampled_runs = []
     ignore_list = 102
-    
-    for x in tqdm(range(1, runs)):
-        sampled_runs.append(x)
-        model = ModelBert(conf, out_slot, out_int, ignore_list, pad_index=PAD_TOKEN).to(DEVICE)
-        model.apply(init_weights) 
-        
-        optimizer = optim.Adam(model.parameters(), lr=lr)
-        criterion_slots = nn.CrossEntropyLoss(ignore_index=PAD_TOKEN)
-        criterion_intents = nn.CrossEntropyLoss() 
-        
-        patience = 3
-        losses_train = []
-        losses_dev = []
-        sampled_epochs = []
-        best_f1 = 0 
-        
-        for x in range(1,n_epochs):
-            loss = train_loop(train_loader, optimizer, criterion_slots, criterion_intents, model, clip=clip)
-            # validate every 5 epochs
-            if x % 5 == 0: 
-                sampled_epochs.append(x)
-                losses_train.append(np.asarray(loss).mean())
-                results_dev, intent_res, loss_dev = eval_loop(dev_loader, criterion_slots, criterion_intents, model, lang)
-                losses_dev.append(np.asarray(loss_dev).mean())
-                
-                f1 = results_dev['total']['f']
-                if f1 > best_f1:
-                    best_f1 = f1
-                    best_model = copy.deepcopy(model).to('cpu')
-                    patience = 3
-                else:
-                    patience -= 1
-                if patience <= 0: # Early stopping 
-                    break 
+    pbar = tqdm(range(1, n_epochs))
 
-        best_model.to(DEVICE)
-        results_test, intent_test, _ = eval_loop(test_loader, criterion_slots, criterion_intents, best_model, lang)   
-        intent_acc.append(intent_test['accuracy'])
-        slot_f1s.append(results_test['total']['f']) 
-        
-    slot_f1s = np.asarray(slot_f1s)
-    intent_acc = np.asarray(intent_acc)    
+    model = ModelBert(conf, out_slot, out_int, ignore_list).to(DEVICE)
+    model.apply(init_weights) 
+    
+    optimizer = optim.Adam(model.parameters(), lr=lr)
+    criterion_slots = nn.CrossEntropyLoss(ignore_index=PAD_TOKEN)
+    criterion_intents = nn.CrossEntropyLoss() 
+    
+    patience = 3
+    losses_train = []
+    losses_dev = []
+    sampled_epochs = []
+    best_f1 = 0 
+    
+    for x in pbar:
+        loss = train_loop(train_loader, optimizer, criterion_slots, criterion_intents, model, clip=clip)
+        # validate every 5 epochs
+        if x % 5 == 0: 
+            sampled_epochs.append(x)
+            losses_train.append(np.asarray(loss).mean())
+            results_dev, intent_res, loss_dev = eval_loop(dev_loader, criterion_slots, criterion_intents, model, lang)
+            losses_dev.append(np.asarray(loss_dev).mean())
+            
+            f1 = results_dev['total']['f']
+            if f1 > best_f1:
+                best_f1 = f1
+                best_model = copy.deepcopy(model).to('cpu')
+                patience = 3
+            else:
+                patience -= 1
+            if patience <= 0: # Early stopping 
+                break 
+
+    best_model.to(DEVICE)
+    results_test, intent_test, _ = eval_loop(test_loader, criterion_slots, criterion_intents, best_model, lang)
+    intent_acc = intent_test['accuracy'] 
+    slot_f1 = results_test['total']['f']   
     
     # print the results
-    print('Slot F1', round(slot_f1s.mean(),3), '+-', round(slot_f1s.std(),3))
-    print('Intent Acc', round(intent_acc.mean(), 3), '+-', round(slot_f1s.std(), 3))
+    print('Slot F1', slot_f1)
+    print('Intent Acc', intent_acc)
     
     # save the model and the results
     folder_name = create_report_folder()
     generate_plots(sampled_epochs, losses_train, losses_dev, os.path.join(folder_name,"plot.png"))
     torch.save(best_model.state_dict(), os.path.join(folder_name, "weights.pt"))
-    generate_report(sampled_runs[-1], sampled_epochs[-1], n_epochs, lr, conf.hidden_size, str(type(model)), str(type(optimizer)), round(slot_f1s.mean(),3), round(intent_acc.mean(), 3), round(slot_f1s.std(),3), round(slot_f1s.std(), 3), os.path.join(folder_name,"report.txt"))
+    generate_report(sampled_epochs[-1], n_epochs, lr, conf.hidden_size, str(type(model)), str(type(optimizer)), slot_f1, intent_acc, os.path.join(folder_name,"report.txt"))
     
     
     
