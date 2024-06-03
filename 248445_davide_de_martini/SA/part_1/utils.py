@@ -125,15 +125,18 @@ def load_data(path):
             x = {}
             # split the sentence and the tags
             sent, tag = line.strip().split('####')
-            x['seq'] = sent
+            # x['seq'] = sent
             tag = tag.split()
             tmp = []
+            tmp_sent = []
             for char in tag:
                 # get the tag
                 if char[0] != '=':
-                    _, char = char.split('=')
+                    word, char = char.split('=')
+                    tmp_sent.append(word)
                 else:
                     char = char[2:]
+                    tmp_sent.append('=')
                 t = char
                 if t == 'O':
                     # no aspect
@@ -141,6 +144,8 @@ def load_data(path):
                 else:
                     # aspect
                     tmp.append(2)
+            x['seq'] = ' '.join(tmp_sent)
             x['aspect'] = tmp
+            print(x)
             dataset.append(x)
     return dataset
