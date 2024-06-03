@@ -11,7 +11,7 @@ import torch.optim as optim
 from transformers import BertConfig
 from torch.utils.data import DataLoader
 
-DATASET_PATH = '/home/disi/nlu_exam/248445_davide_de_martini/SA/part_1'
+DATASET_PATH = '/home/davide/Desktop/nlu_exam/248445_davide_de_martini/SA/part_1'
 
 if __name__ == "__main__":
     

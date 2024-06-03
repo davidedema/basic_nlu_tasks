@@ -3,7 +3,7 @@ from evals import evaluate_ote
 import torch.nn as nn
 import os 
 import matplotlib.pyplot as plt
-from transformers import BertTokenizer
+from transformers import BertTokenizer, BertModel
 
 tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
 
@@ -12,6 +12,9 @@ def init_weights(mat):
     Init the weights of the model
     '''
     for m in mat.modules():
+        if isinstance(m, (BertModel,)):
+            print("Skipping", m)
+            continue  # Skip BertModel layers
         if type(m) in [nn.GRU, nn.LSTM, nn.RNN]:
             for name, param in m.named_parameters():
                 if 'weight_ih' in name:
@@ -167,7 +170,7 @@ def create_report_folder():
     '''
     Create folder contating all the info for the test
     '''
-    base_path = "/home/disi/nlu_exam/248445_davide_de_martini/SA/part_1/reports/test"
+    base_path = "/home/davide/Desktop/nlu_exam/248445_davide_de_martini/SA/part_1/reports/test"
     last_index = get_last_index(os.path.dirname(base_path), os.path.basename(base_path))
     foldername = f"{base_path}{last_index + 1:02d}"
     os.mkdir(foldername)

@@ -5,7 +5,7 @@ from conll import evaluate
 from sklearn.metrics import classification_report
 import os
 import matplotlib.pyplot as plt
-from transformers import BertTokenizer
+from transformers import BertTokenizer, BertModel
 
 tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
 
@@ -14,6 +14,9 @@ def init_weights(mat):
     Init the weights of the model
     '''
     for m in mat.modules():
+        if isinstance(m, (BertModel,)):
+            print("Skipping", m)
+            continue  # Skip BertModel layers
         if type(m) in [nn.GRU, nn.LSTM, nn.RNN]:
             for name, param in m.named_parameters():
                 if 'weight_ih' in name:
