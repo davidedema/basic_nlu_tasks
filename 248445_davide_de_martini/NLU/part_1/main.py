@@ -126,10 +126,22 @@ if __name__ == "__main__":
     print('Slot F1', round(slot_f1s.mean(),3), '+-', round(slot_f1s.std(),3))
     print('Intent Acc', round(intent_acc.mean(), 3), '+-', round(slot_f1s.std(), 3))
     
+         
+
+    PATH = os.path.join("bin", "weights_1.pt")
+    saving_object = {"epoch": x, 
+                     "model": model.state_dict(), 
+                     "optimizer": optimizer.state_dict(), 
+                     "w2id": lang.word2id, 
+                     "slot2id": lang.slot2id, 
+                     "intent2id": lang.intent2id}
+    torch.save(saving_object, PATH)
+
+
+    
     # save the model and create the report
     folder_name = create_report_folder()
     generate_plots(sampled_epochs, losses_train, losses_dev, os.path.join(folder_name,"plot.png"))
-    torch.save(best_model.state_dict(), os.path.join(folder_name, "weights.pt"))
     generate_report(sampled_runs[-1], sampled_epochs[-1], n_epochs, lr, hid_size, emb_size, str(type(model)), str(type(optimizer)), round(slot_f1s.mean(),3), round(intent_acc.mean(), 3), round(slot_f1s.std(),3), round(slot_f1s.std(), 3), os.path.join(folder_name,"report.txt"))
     
     
