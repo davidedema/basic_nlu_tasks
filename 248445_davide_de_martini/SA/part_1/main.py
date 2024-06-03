@@ -85,10 +85,16 @@ if __name__ == "__main__":
     print('Aspect Recall', results_test[1])
     print('Aspect F1', results_test[2])
     
+    PATH = os.path.join("bin", "weights.pt")
+    saving_object = {"epoch": x, 
+                     "model": model.state_dict(), 
+                     "optimizer": optimizer.state_dict()
+                     }
+    torch.save(saving_object, PATH)
+    
     # save the model and the results
     folder_name = create_report_folder()
     generate_plots(sampled_epochs, losses_train, losses_dev, os.path.join(folder_name,"plot.png"))
-    torch.save(best_model.state_dict(), os.path.join(folder_name, "weights.pt"))
     generate_report(sampled_epochs[-1], n_epochs, lr, conf.hidden_size, str(type(model)), str(type(optimizer)), results_test[0], results_test[1], results_test[2], os.path.join(folder_name,"report.txt"))
     
     
