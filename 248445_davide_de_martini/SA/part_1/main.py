@@ -11,9 +11,19 @@ import torch.optim as optim
 from transformers import BertConfig
 from torch.utils.data import DataLoader
 
-DATASET_PATH = '/home/davide/Desktop/nlu_exam/248445_davide_de_martini/SA/part_1'
+# Modify with the absolute path of the dataset
+DATASET_PATH = '/home/davide/Desktop/248445_davide_de_martini/SA/part_1'
+
+GEN_REPORT = False # if true, it will generate a report with the results, watch out for the folder path in the report function
+TEST = True # if true, it will run the test on the test set
+WEIGHTS = "weights.pt" # if TEST is True, it will load the weights from this file
 
 if __name__ == "__main__":
+    
+    saving_object = None
+    
+    if TEST:
+        saving_object = torch.load(os.path.join(DATASET_PATH,'bin','weights.pt'))
     
     # prepare the datasets
     tmp_train_raw = load_data(os.path.join(DATASET_PATH,'dataset','laptop_train.txt'))
@@ -57,45 +67,50 @@ if __name__ == "__main__":
     best_f1 = 0 
     pbar = tqdm(range(1,n_epochs))
     
-    for x in pbar:
-        loss = train_loop(train_loader, optimizer, criterion_aspect, model, clip=clip)
-        # pbar.set_description(f'Loss: {np.asarray(loss).mean():.2f}')
-        pbar.set_description(f'F1: {best_f1:.2f}')
-        # validate every 5 epochs
-        if x % 5 == 0: 
-            sampled_epochs.append(x)
-            losses_train.append(np.asarray(loss).mean())
-            results_dev, loss_dev = eval_loop(dev_loader, criterion_aspect, model)
-            losses_dev.append(np.asarray(loss_dev).mean())
-            
-            f1 = results_dev[2]
-            if f1 > best_f1:
-                best_f1 = f1
-                best_model = copy.deepcopy(model).to(DEVICE)
-                patience = 3
-            else:
-                patience -= 1
-            if patience <= 0: # Early stopping 
-                break 
+    if TEST:
+        model.load_state_dict(saving_object['model'])
+        results_test, _ = eval_loop(test_loader, criterion_aspect, model)
+    
+    if not TEST:
+        for x in pbar:
+            loss = train_loop(train_loader, optimizer, criterion_aspect, model, clip=clip)
+            # pbar.set_description(f'Loss: {np.asarray(loss).mean():.2f}')
+            pbar.set_description(f'F1: {best_f1:.2f}')
+            # validate every 5 epochs
+            if x % 5 == 0: 
+                sampled_epochs.append(x)
+                losses_train.append(np.asarray(loss).mean())
+                results_dev, loss_dev = eval_loop(dev_loader, criterion_aspect, model)
+                losses_dev.append(np.asarray(loss_dev).mean())
+                
+                f1 = results_dev[2]
+                if f1 > best_f1:
+                    best_f1 = f1
+                    best_model = copy.deepcopy(model).to(DEVICE)
+                    patience = 3
+                else:
+                    patience -= 1
+                if patience <= 0: # Early stopping 
+                    break 
 
-    results_test, _ = eval_loop(test_loader, criterion_aspect, model)
+        results_test, _ = eval_loop(test_loader, criterion_aspect, best_model)
     
     # print the results
     print('Aspect Precision', results_test[0])
     print('Aspect Recall', results_test[1])
     print('Aspect F1', results_test[2])
     
-    PATH = os.path.join("bin", "weights.pt")
-    saving_object = {"epoch": x, 
-                     "model": best_model.state_dict(), 
-                     "optimizer": optimizer.state_dict()
-                     }
-    torch.save(saving_object, PATH)
-    
     # save the model and the results
-    folder_name = create_report_folder()
-    generate_plots(sampled_epochs, losses_train, losses_dev, os.path.join(folder_name,"plot.png"))
-    generate_report(sampled_epochs[-1], n_epochs, lr, conf.hidden_size, str(type(model)), str(type(optimizer)), results_test[0], results_test[1], results_test[2], os.path.join(folder_name,"report.txt"))
+    if GEN_REPORT:
+        folder_name = create_report_folder()
+        generate_plots(sampled_epochs, losses_train, losses_dev, os.path.join(folder_name,"plot.png"))
+        PATH = os.path.join("bin", "weights.pt")
+        saving_object = {"epoch": x, 
+                        "model": best_model.state_dict(), 
+                        "optimizer": optimizer.state_dict()
+                        }
+        torch.save(saving_object, PATH)
+        generate_report(sampled_epochs[-1], n_epochs, lr, conf.hidden_size, str(type(model)), str(type(optimizer)), results_test[0], results_test[1], results_test[2], os.path.join(folder_name,"report.txt"))
     
     
     

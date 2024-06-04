@@ -146,6 +146,5 @@ def load_data(path):
                     tmp.append(2)
             x['seq'] = ' '.join(tmp_sent)
             x['aspect'] = tmp
-            print(x)
             dataset.append(x)
     return dataset

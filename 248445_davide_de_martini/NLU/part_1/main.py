@@ -11,9 +11,17 @@ from sklearn.model_selection import train_test_split
 from collections import Counter
 
 PAD_TOKEN = 0
-DATASET_PATH = '/home/disi/nlu_exam/248445_davide_de_martini/NLU/part_1'
+# Modify with the absolute path of the dataset
+DATASET_PATH = '/home/davide/Desktop/248445_davide_de_martini/NLU/part_1'
+
+GEN_REPORT = False # if true, it will generate a report with the results, watch out for the folder path in the report function
+TEST = True # if true, it will run the test on the test set
+WEIGHTS = "weights_2.pt" # if TEST is True, it will load the weights from this file
 
 if __name__ == "__main__":
+    
+    if TEST:
+        saving_object = torch.load(os.path.join(DATASET_PATH, "bin", WEIGHTS))
     
     # preprocess the data and prepare the datasets
     tmp_train_raw = load_data(os.path.join(DATASET_PATH,'dataset','train.json'))
@@ -35,6 +43,7 @@ if __name__ == "__main__":
         else:
             mini_train.append(tmp_train_raw[id_y])
     
+    # Create the train and dev set
     X_train, X_dev, y_train, y_dev = train_test_split(inputs, labels, test_size=portion, 
                                                         random_state=42, 
                                                         shuffle=True,
@@ -52,6 +61,11 @@ if __name__ == "__main__":
     intents = set([line['intent'] for line in corpus])
 
     lang = Lang(words, intents, slots, cutoff=0)
+    
+    if TEST:
+        lang.word2id = saving_object['w2id']
+        lang.slot2id = saving_object['slot2id']
+        lang.intent2id = saving_object['intent2id']
     
     # create the datasets
     train_dataset = IntentsAndSlots(train_raw, lang)
@@ -79,70 +93,79 @@ if __name__ == "__main__":
     slot_f1s, intent_acc = [], []
     sampled_runs = []
     
-    for x in tqdm(range(1, runs)):
-        sampled_runs.append(x)
+    if TEST:
         model = ModelIAS(hid_size, out_slot, out_int, emb_size, vocab_len, pad_index=PAD_TOKEN, isBidirectional=True, hasDropout=True).to(DEVICE)
         model.apply(init_weights)
-        
-        optimizer = optim.Adam(model.parameters(), lr=lr)
+        model.load_state_dict(saving_object['model'])
         criterion_slots = nn.CrossEntropyLoss(ignore_index=PAD_TOKEN)
         criterion_intents = nn.CrossEntropyLoss() 
+        results_test, intent_test, _ = eval_loop(test_loader, criterion_slots, criterion_intents, model, lang)   
+        print('Slot F1', results_test['total']['f'])
+        print('Intent Acc', intent_test['accuracy'])
         
-        patience = 3
-        losses_train = []
-        losses_dev = []
-        sampled_epochs = []
-        best_f1 = 0 
         
-        for x in range(1,n_epochs):
-            loss = train_loop(train_loader, optimizer, criterion_slots, criterion_intents, model, clip=clip)
+    
+    if not TEST:
+        for x in tqdm(range(1, runs)):
+            sampled_runs.append(x)
+            model = ModelIAS(hid_size, out_slot, out_int, emb_size, vocab_len, pad_index=PAD_TOKEN, isBidirectional=True, hasDropout=True).to(DEVICE)
+            model.apply(init_weights)
             
-            # validate every 5 epochs
-            if x % 5 == 0: 
-                sampled_epochs.append(x)
-                losses_train.append(np.asarray(loss).mean())
-                results_dev, intent_res, loss_dev = eval_loop(dev_loader, criterion_slots, criterion_intents, model, lang)
-                losses_dev.append(np.asarray(loss_dev).mean())
+            optimizer = optim.Adam(model.parameters(), lr=lr)
+            criterion_slots = nn.CrossEntropyLoss(ignore_index=PAD_TOKEN)
+            criterion_intents = nn.CrossEntropyLoss() 
+            
+            patience = 3
+            losses_train = []
+            losses_dev = []
+            sampled_epochs = []
+            best_f1 = 0 
+            
+            for x in range(1,n_epochs):
+                loss = train_loop(train_loader, optimizer, criterion_slots, criterion_intents, model, clip=clip)
                 
-                f1 = results_dev['total']['f']
-                if f1 > best_f1:
-                    best_f1 = f1
-                    best_model = copy.deepcopy(model).to('cpu')
-                    patience = 3
-                else:
-                    patience -= 1
-                if patience <= 0: # Early stopping
-                    break 
-          
-        best_model.to(DEVICE)
-        results_test, intent_test, _ = eval_loop(test_loader, criterion_slots, criterion_intents, best_model, lang)   
-        intent_acc.append(intent_test['accuracy'])
-        slot_f1s.append(results_test['total']['f']) 
+                # validate every 5 epochs
+                if x % 5 == 0: 
+                    sampled_epochs.append(x)
+                    losses_train.append(np.asarray(loss).mean())
+                    results_dev, intent_res, loss_dev = eval_loop(dev_loader, criterion_slots, criterion_intents, model, lang)
+                    losses_dev.append(np.asarray(loss_dev).mean())
+                    
+                    f1 = results_dev['total']['f']
+                    if f1 > best_f1:
+                        best_f1 = f1
+                        best_model = copy.deepcopy(model).to('cpu')
+                        patience = 3
+                    else:
+                        patience -= 1
+                    if patience <= 0: # Early stopping
+                        break 
+            
+            best_model.to(DEVICE)
+            results_test, intent_test, _ = eval_loop(test_loader, criterion_slots, criterion_intents, best_model, lang)   
+            intent_acc.append(intent_test['accuracy'])
+            slot_f1s.append(results_test['total']['f']) 
+            
+        slot_f1s = np.asarray(slot_f1s)
+        intent_acc = np.asarray(intent_acc)    
         
-    slot_f1s = np.asarray(slot_f1s)
-    intent_acc = np.asarray(intent_acc)    
-    
-    # print results
-    print('Slot F1', round(slot_f1s.mean(),3), '+-', round(slot_f1s.std(),3))
-    print('Intent Acc', round(intent_acc.mean(), 3), '+-', round(slot_f1s.std(), 3))
-    
-         
-
-    PATH = os.path.join("bin", "weights_1.pt")
-    saving_object = {"epoch": x, 
-                     "model": model.state_dict(), 
-                     "optimizer": optimizer.state_dict(), 
-                     "w2id": lang.word2id, 
-                     "slot2id": lang.slot2id, 
-                     "intent2id": lang.intent2id}
-    torch.save(saving_object, PATH)
-
-
+        # print results
+        print('Slot F1', round(slot_f1s.mean(),3), '+-', round(slot_f1s.std(),3))
+        print('Intent Acc', round(intent_acc.mean(), 3), '+-', round(slot_f1s.std(), 3))
     
     # save the model and create the report
-    folder_name = create_report_folder()
-    generate_plots(sampled_epochs, losses_train, losses_dev, os.path.join(folder_name,"plot.png"))
-    generate_report(sampled_runs[-1], sampled_epochs[-1], n_epochs, lr, hid_size, emb_size, str(type(model)), str(type(optimizer)), round(slot_f1s.mean(),3), round(intent_acc.mean(), 3), round(slot_f1s.std(),3), round(slot_f1s.std(), 3), os.path.join(folder_name,"report.txt"))
+    if GEN_REPORT:
+        folder_name = create_report_folder()
+        generate_plots(sampled_epochs, losses_train, losses_dev, os.path.join(folder_name,"plot.png"))
+        PATH = os.path.join("bin", "weights_1.pt")
+        saving_object = {"epoch": x, 
+                        "model": model.state_dict(), 
+                        "optimizer": optimizer.state_dict(), 
+                        "w2id": lang.word2id, 
+                        "slot2id": lang.slot2id, 
+                        "intent2id": lang.intent2id}
+        torch.save(saving_object, PATH)
+        generate_report(sampled_runs[-1], sampled_epochs[-1], n_epochs, lr, hid_size, emb_size, str(type(model)), str(type(optimizer)), round(slot_f1s.mean(),3), round(intent_acc.mean(), 3), round(slot_f1s.std(),3), round(slot_f1s.std(), 3), os.path.join(folder_name,"report.txt"))
     
     
     

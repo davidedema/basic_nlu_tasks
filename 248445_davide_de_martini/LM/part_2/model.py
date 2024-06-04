@@ -33,6 +33,8 @@ class LM_LSTM(nn.Module):
         # tie the weights
         if emb_size == hidden_size:                                           
             self.output.weight = self.embedding.weight
+        else:
+            print("Weight tying is not possible. Hidden size should be equal to embedding size.")
     
     def forward(self, input_sequence):                                                              
         emb = self.embedding(input_sequence)

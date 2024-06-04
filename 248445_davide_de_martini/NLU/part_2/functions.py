@@ -14,9 +14,10 @@ def init_weights(mat):
     Init the weights of the model
     '''
     for m in mat.modules():
+        # Do not init BertModel layers, they are pretrained
         if isinstance(m, (BertModel,)):
-            print("Skipping", m)
-            continue  # Skip BertModel layers
+                # print("Skipping", m)
+                continue  # Skip BertModel layers
         if type(m) in [nn.GRU, nn.LSTM, nn.RNN]:
             for name, param in m.named_parameters():
                 if 'weight_ih' in name:

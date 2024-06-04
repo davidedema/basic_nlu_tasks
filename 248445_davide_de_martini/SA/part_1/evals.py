@@ -37,8 +37,6 @@ def evaluate_ote(gold_ot, pred_ot):
     return ote_scores
 
 
-#All the other functions are the same as the original code and they are not used in the current codebase
-
 def evaluate_ts(gold_ts, pred_ts):
     """
     evaluate the model performance for the ts task
